@@ -1,0 +1,83 @@
+<%- layout('layouts/adminLayout') %>
+
+<div class="container-fluid">
+    <h2>Configuración General</h2>
+
+    <div class="accordion" id="configAccordion">
+        <!-- Sección Modelo IA -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingIaModel">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIaModel" aria-expanded="true" aria-controls="collapseIaModel">
+                    Configuración del Modelo de IA
+                </button>
+            </h2>
+            <div id="collapseIaModel" class="accordion-collapse collapse show" aria-labelledby="headingIaModel" data-bs-parent="#configAccordion">
+                <div class="accordion-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="iaApiUrl" class="form-label">URL del API del Modelo IA</label>
+                            <input type="url" class="form-control" id="iaApiUrl" placeholder="https://api.example.com/ia">
+                        </div>
+                        <div class="mb-3">
+                            <label for="iaApiKey" class="form-label">API Key del Modelo IA</label>
+                            <input type="text" class="form-control" id="iaApiKey" placeholder="tu-api-key">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Guardar Configuración IA</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección Socket.IO -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingSocketIo">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSocketIo" aria-expanded="false" aria-controls="collapseSocketIo">
+                    Configuración de Socket.IO
+                </button>
+            </h2>
+            <div id="collapseSocketIo" class="accordion-collapse collapse" aria-labelledby="headingSocketIo" data-bs-parent="#configAccordion">
+                <div class="accordion-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="socketIoUrl" class="form-label">URL del Servidor Socket.IO</label>
+                            <input type="url" class="form-control" id="socketIoUrl" placeholder="ws://localhost:3001">
+                        </div>
+                        <div class="mb-3">
+                            <label for="socketIoPath" class="form-label">Path de Socket.IO (opcional)</label>
+                            <input type="text" class="form-control" id="socketIoPath" placeholder="/socket.io">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Guardar Configuración Socket.IO</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección Evolution API (WhatsApp) -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingEvolutionApi">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEvolutionApi" aria-expanded="false" aria-controls="collapseEvolutionApi">
+                    Configuración de Evolution API (WhatsApp)
+                </button>
+            </h2>
+            <div id="collapseEvolutionApi" class="accordion-collapse collapse" aria-labelledby="headingEvolutionApi" data-bs-parent="#configAccordion">
+                <div class="accordion-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="evolutionApiUrl" class="form-label">URL de Evolution API</label>
+                            <input type="url" class="form-control" id="evolutionApiUrl" placeholder="http://localhost:8080">
+                        </div>
+                        <div class="mb-3">
+                            <label for="evolutionApiKey" class="form-label">API Key de Evolution API</label>
+                            <input type="text" class="form-control" id="evolutionApiKey" placeholder="tu-evolution-api-key">
+                        </div>
+                        <div class="mb-3">
+                            <label for="evolutionInstance" class="form-label">Nombre de la Instancia</label>
+                            <input type="text" class="form-control" id="evolutionInstance" placeholder="defaultInstance">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Guardar Configuración Evolution API</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

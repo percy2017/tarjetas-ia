@@ -1,0 +1,35 @@
+<%- layout('layouts/adminLayout') %>
+
+<div class="container-fluid">
+  <h1>Página de Ventas</h1>
+  <table id="ventasTable" class="table table-striped table-bordered">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Producto</th>
+        <th>Cliente</th>
+        <th>Fecha</th>
+        <th>Monto</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% ventas.forEach(venta => { %>
+        <tr>
+          <td><%= venta.id %></td>
+          <td><%= venta.producto %></td>
+          <td><%= venta.cliente %></td>
+          <td><%= venta.fecha %></td>
+          <td><%= venta.monto %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+
+<% block('pageScripts').append(`
+<script>
+  $(document).ready( function () {
+    $('#ventasTable').DataTable();
+  } );
+</script>
+`) %>

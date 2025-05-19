@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "6000:3000" # Mapea el puerto 6000 del host al puerto 3000 del contenedor
+    volumes:
+      - ./uploads:/usr/src/app/public/uploads
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000 # Puerto que la app Express escuchará DENTRO del contenedor
+      SESSION_SECRET: "ESTE_ES_UN_SECRETO_PARA_PRODUCCION_CAMBIAME_POR_ALGO_MUY_SEGURO" # ¡CAMBIAR ESTO EN PRODUCCIÓN!
+      DB_HOST: "host_de_tu_mysql_produccion" # Ej: IP del VPS si MySQL corre en el host, o nombre del servicio Docker si MySQL está en otro contenedor
+      DB_USER: "usuario_mysql_produccion"
+      DB_PASS: "password_mysql_produccion"
+      DB_NAME: "nombre_db_produccion"
+      # Puedes añadir más variables de entorno aquí si las necesitas para IA, Sockets, Evolution API, etc.
+      # IA_API_URL: "url_de_tu_api_ia"
+      # IA_API_KEY: "tu_api_key_ia"
+      # SOCKET_IO_URL: "url_de_tu_servidor_socket_io"
+      # EVOLUTION_API_URL: "url_evolution_api"
+      # EVOLUTION_API_KEY: "key_evolution_api"
+      # EVOLUTION_INSTANCE: "instancia_evolution"
+    # Si MySQL también corriera como un servicio Docker en este mismo docker-compose.yml:
+    # depends_on:
+    #   - mysql_db # Asegura que el servicio de DB inicie antes que la app
+#
+# services:
+#   mysql_db:
+#     image: mysql:8.0 # O la versión que prefieras
+#     restart: always
+#     environment:
+#       MYSQL_ROOT_PASSWORD: "root_password_seguro_para_db"
+#       MYSQL_DATABASE: "nombre_db_produccion"
+#       MYSQL_USER: "usuario_mysql_produccion"
+#       MYSQL_PASSWORD: "password_mysql_produccion"
+#     volumes:
+#       - mysql_data:/var/lib/mysql
+#     ports: # Opcional: solo si necesitas acceder a MySQL directamente desde fuera de Docker
+#       - "3306:3306" 
+
+# volumes: # Define el volumen para persistir los datos de MySQL
+#   mysql_data:

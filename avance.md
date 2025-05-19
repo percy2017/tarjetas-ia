@@ -1,0 +1,160 @@
+# Avance del Proyecto: TarjetasIA
+
+## 1. Resumen General del Proyecto
+
+"TarjetasIA" es una aplicación web desarrollada con Node.js y Express.js, diseñada para la creación y gestión de tarjetas digitales (posiblemente de presentación, invitaciones, etc.), con un panel de administración para gestionar diversas funcionalidades. La aplicación ha sido recientemente dockerizada para su despliegue en un VPS.
+
+## 2. Tecnologías Principales Utilizadas
+
+*   **Backend:** Node.js, Express.js
+*   **Frontend (Vistas):** EJS (Embedded JavaScript templates) con el motor `ejs-mate` para layouts.
+*   **Estilos:** Bootstrap 5, CSS personalizado.
+*   **JavaScript Frontend:** jQuery, DataTables, SweetAlert2, Bootstrap JS.
+*   **Gestión de Sesiones:** `express-session` (actualmente con `MemoryStore`).
+*   **Subida de Archivos:** `multer`.
+*   **Variables de Entorno (Desarrollo):** `dotenv`.
+*   **Contenerización y Despliegue:** Docker, Docker Compose.
+*   **Base de Datos (Planeada):** MySQL.
+
+## 3. Estado Actual del Proyecto
+
+El proyecto cuenta con una landing page, un sistema de login básico, y un panel de administración con varias secciones funcionales. La aplicación ha sido configurada para usar variables de entorno y se han creado los archivos necesarios para su despliegue con Docker (`Dockerfile`, `docker-compose.yml`, `.dockerignore`). La aplicación se ha desplegado exitosamente en un VPS en `http://154.38.177.115:6001/`.
+
+## 4. Detalle de Funcionalidades Implementadas
+
+### 4.1. Aplicación Base y Configuración (`app.js`)
+
+*   Servidor Express escuchando en un puerto configurable (default 3000, `process.env.PORT`).
+*   Motor de plantillas EJS configurado con `ejs-mate`.
+*   Servicio de archivos estáticos desde `./public`.
+*   `body-parser` para `urlencoded` form data.
+*   `express-session` configurado con `process.env.SESSION_SECRET`.
+    *   **Advertencia Actual:** Usa `MemoryStore` por defecto, no recomendado para producción.
+*   Carga de variables de entorno desde `.env` usando `dotenv` para desarrollo.
+*   Rutas principales definidas:
+    *   `/`: Landing page.
+    *   `/login`: Página de login (GET y POST).
+    *   `/logout`: Cierre de sesión.
+    *   Rutas protegidas bajo `/admin/*` usando el middleware `requireLogin`.
+
+### 4.2. Vistas y Frontend
+
+*   **`views/index.ejs` (Landing Page):**
+    *   Diseño responsivo con Bootstrap.
+    *   Secciones: Carrusel, Sobre Nosotros, Beneficios, Precios (placeholders), FAQ (acordeón).
+    *   Barra de navegación con logo SVG inline y enlaces a secciones y login.
+    *   Favicon SVG inline.
+*   **`views/login.ejs`:**
+    *   Diseño personalizado (`public/css/login.css`) inspirado en WordPress.
+    *   Logo SVG inline.
+    *   Formulario de login (usuario, contraseña).
+    *   Botón "Loguearse con WhatsApp" (visual, sin funcionalidad).
+    *   Enlace para volver a la landing page.
+    *   Favicon SVG inline.
+*   **`views/layouts/adminLayout.ejs` (Layout del Panel de Admin):**
+    *   Estructura base para todas las páginas del admin.
+    *   Barra superior con nombre del proyecto, breadcrumbs, switch de Dark Mode, avatar de usuario (placeholder) y botón de Salir.
+    *   Barra lateral de navegación con enlaces a: Panel, Ventas, Previsualizador, Multimedia, Configuración.
+    *   Carga de CSS comunes: Bootstrap, `admin.css`, `dark-mode.css`, `dataTables.dataTables.min.css`.
+    *   Carga de JS comunes (al final del body): `jquery.min.js`, `dataTables.core.js`, `dataTables.dataTables.min.js`, `bootstrap.bundle.min.js`, script para Dark Mode y lógica de sidebar.
+    *   Bloque `<%- block('pageScripts') %>` para scripts específicos de cada página.
+    *   Favicon SVG inline.
+*   **`views/admin.ejs` (Dashboard Admin):**
+    *   Página de bienvenida simple.
+*   **`views/previsualizador.ejs`:**
+    *   Formulario para un "prompt".
+    *   Al enviar, crea archivos `index.html`, `style.css`, `script.js` en `public/cliente_prueba/` con contenido básico generado a partir del prompt.
+*   **`views/multimedia.ejs`:**
+    *   Formulario para subir múltiples archivos usando `multer` (guardados en `public/uploads/`).
+    *   Muestra los archivos subidos con previsualizaciones (imágenes, videos, icono genérico para otros).
+    *   Barra lateral de detalles que aparece al hacer clic en un archivo, mostrando nombre, URL pública y botón para copiar URL (usa SweetAlert2 para notificaciones).
+*   **`views/ventas.ejs`:**
+    *   Muestra datos de ventas desde `public/data/ventas.json`.
+    *   Utiliza DataTables para una tabla interactiva (paginación, búsqueda, ordenamiento).
+    *   El script de inicialización de DataTables se carga mediante el bloque `pageScripts` del layout.
+*   **`views/configuracion.ejs`:**
+    *   Página con un acordeón de Bootstrap.
+    *   Secciones con formularios (solo estructura HTML, sin backend para guardar):
+        *   Configuración del Modelo de IA (URL, API Key).
+        *   Configuración de Socket.IO (URL, Path).
+        *   Configuración de Evolution API (WhatsApp) (URL, API Key, Instancia).
+
+### 4.3. Autenticación (`routes/auth.js`)
+
+*   Ruta GET `/login`: Renderiza `login.ejs`. Redirige a `/admin` si ya está logueado.
+*   Ruta POST `/login`: Valida credenciales `admin`/`password` (hardcodeadas). Establece `req.session.loggedIn = true`.
+*   Ruta GET `/logout`: Destruye la sesión y redirige a `/login`.
+
+## 5. Estructura de Archivos Clave
+
+*   `app.js`: Archivo principal del servidor Express.
+*   `.env`: Variables de entorno para desarrollo.
+*   `Dockerfile`: Instrucciones para construir la imagen Docker.
+*   `.dockerignore`: Archivos a ignorar al construir la imagen Docker.
+*   `docker-compose.yml`: Define el servicio Docker para la aplicación.
+*   `package.json`: Dependencias y scripts del proyecto.
+*   `public/`: Carpeta para archivos estáticos.
+    *   `css/`: Hojas de estilo (Bootstrap, admin, login, dark-mode, DataTables, SweetAlert2).
+    *   `js/`: Scripts de frontend (jQuery, DataTables, SweetAlert2, Bootstrap).
+    *   `images/`: Imágenes (avatar.svg, favicon.svg).
+    *   `uploads/`: Carpeta para archivos subidos por el usuario (persistida con volumen en Docker).
+    *   `data/`: Datos de prueba (ventas.json).
+*   `routes/`: Archivos de rutas (auth.js).
+*   `views/`: Plantillas EJS.
+    *   `layouts/adminLayout.ejs`: Layout principal del panel de administración.
+    *   Otras vistas para cada página.
+
+## 6. Configuración de Despliegue (Docker)
+
+*   **`Dockerfile`:**
+    *   Base: `node:18-alpine`.
+    *   Copia `package*.json`, instala dependencias de producción.
+    *   Copia el resto de la aplicación.
+    *   Expone el puerto 3000.
+    *   Comando de inicio: `node app.js`.
+*   **`.dockerignore`:**
+    *   Excluye `node_modules`, `.git`, `.env`, archivos Docker, logs, etc.
+*   **`docker-compose.yml`:**
+    *   Servicio `app`.
+    *   Construye desde el `Dockerfile` local.
+    *   Mapeo de puertos: `6000:3000` (host:contenedor).
+    *   Volumen: `./public/uploads:/usr/src/app/public/uploads` para persistir archivos subidos.
+    *   `restart: always`.
+    *   Variables de entorno para producción:
+        *   `NODE_ENV=production`
+        *   `PORT=3000` (interno al contenedor)
+        *   `SESSION_SECRET`: Placeholder, **NECESITA SER CAMBIADO POR UNA CLAVE SEGURA EN PRODUCCIÓN.**
+        *   Placeholders para `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`.
+        *   Comentarios para futuras variables de IA, Sockets, Evolution API.
+
+## 7. Puntos Pendientes y Próximas Mejoras (Identificados)
+
+*   **Almacén de Sesiones Persistente:** Reemplazar `MemoryStore` por defecto de `express-session` con una solución como `connect-redis` o una basada en MySQL (ej. `connect-session-knex`) para producción.
+*   **Conexión a Base de Datos MySQL:**
+    *   Instalar un driver de MySQL (ej. `mysql2`).
+    *   Implementar la lógica de conexión en `app.js` usando las variables de entorno.
+    *   Crear tablas necesarias.
+*   **Autenticación con Base de Datos:** Modificar la lógica de login para validar usuarios contra la base de datos en lugar de credenciales hardcodeadas.
+*   **Funcionalidad de Guardado en Configuración:** Implementar el backend para guardar los datos de los formularios de la página `/admin/configuracion` (probablemente en la base de datos o en un archivo de configuración).
+*   **Seguridad de `SESSION_SECRET`:** Generar y usar una clave `SESSION_SECRET` fuerte y única en el `docker-compose.yml` para el entorno de producción.
+*   **Valores de Producción en `docker-compose.yml`:** Reemplazar todos los placeholders de variables de entorno (DB, APIs) con los valores reales de producción.
+*   **(Opcional) Eliminar `version` de `docker-compose.yml`:** Para evitar la advertencia de Docker Compose.
+*   **(Opcional) HTTPS:** Considerar un proxy inverso (Nginx, Traefik) para HTTPS si la aplicación va a manejar datos sensibles o requiere una conexión segura.
+*   **(Opcional) Funcionalidad "Loguearse con WhatsApp":** Implementar la lógica real para esta característica.
+
+## 8. Instrucciones para Continuar
+
+*   **Desarrollo Local:**
+    1.  Asegurarse de tener Node.js y npm instalados.
+    2.  Crear/actualizar el archivo `.env` con las configuraciones locales (DB, SESSION_SECRET, etc.).
+    3.  Ejecutar `npm install` para instalar dependencias.
+    4.  Ejecutar `npm run dev` (que usa Nodemon) para iniciar el servidor de desarrollo.
+    5.  Acceder a `http://localhost:3000` (o el puerto definido en `.env`).
+*   **Despliegue/Actualización en VPS (con Docker):**
+    1.  Asegurarse de que Docker y Docker Compose estén instalados en el VPS.
+    2.  Actualizar el `docker-compose.yml` en el VPS con los secretos y configuraciones de producción correctos.
+    3.  Transferir los archivos actualizados del proyecto al VPS (excluyendo `node_modules` y `.env`).
+    4.  Desde el directorio del proyecto en el VPS, ejecutar: `sudo docker compose down && sudo docker compose up --build -d` (el `down` es para detener y remover contenedores anteriores si existen).
+    5.  Acceder a la aplicación a través de `http://IP_DEL_VPS:6000`.
+
+Este prompt debería proporcionar un contexto completo del estado actual del proyecto TarjetasIA.

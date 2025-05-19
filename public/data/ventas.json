@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "producto": "Tarjeta Digital Básica",
+    "cliente": "Juan Pérez",
+    "fecha": "2025-05-19",
+    "monto": 25.00
+  },
+  {
+    "id": 2,
+    "producto": "Tarjeta Digital Premium",
+    "cliente": "María Gómez",
+    "fecha": "2025-05-18",
+    "monto": 50.00
+  },
+  {
+    "id": 3,
+    "producto": "Tarjeta Digital Estándar",
+    "cliente": "Carlos Rodríguez",
+    "fecha": "2025-05-17",
+    "monto": 35.00
+  }
+]

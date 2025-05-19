@@ -1,0 +1,13 @@
+<% layout('layouts/adminLayout') %>
+
+<h1>Previsualizador de Páginas</h1>
+
+<form action="/admin/previsualizador" method="post">
+    <div class="mb-3">
+        <label for="prompt" class="form-label">Prompt para la IA:</label>
+        <textarea class="form-control" id="prompt" name="prompt" rows="3"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Crear Página</button>
+</form>
+
+<iframe src="/cliente_prueba/index.html" width="100%" height="500px"></iframe>

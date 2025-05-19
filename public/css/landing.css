@@ -1,0 +1,33 @@
+/* Custom styles for the landing page */
+body {
+    padding-top: 56px; /* Adjust for fixed navbar height */
+}
+
+.carousel-item {
+    max-height: 400px; /* Adjust as needed */
+    overflow: hidden;
+}
+
+.carousel-item img {
+    object-fit: cover;
+}
+
+#sobre-nosotros,
+#beneficios,
+#precios,
+#preguntas-frecuentes {
+    padding-top: 50px;
+    padding-bottom: 50px;
+}
+
+footer {
+    margin-top: 40px;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+body {
+    padding-top: 56px; /* Adjust for fixed navbar height */
+    padding-bottom: 50px; /* Adjust for fixed footer height */
+}

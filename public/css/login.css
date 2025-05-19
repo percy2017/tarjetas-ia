@@ -1,0 +1,83 @@
+body.login-page {
+    background-color: #f1f1f1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.login-container {
+    background-color: #fff;
+    padding: 26px 24px 46px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.13);
+    border-radius: 4px;
+}
+
+.login-logo {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.login-logo img {
+    max-width: 80px;
+    height: auto;
+}
+
+.login-form .form-label {
+    font-weight: 600;
+    color: #444;
+}
+
+.login-form .form-control {
+    border-radius: 3px;
+    border: 1px solid #ddd;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.07);
+    padding: 8px;
+    margin-bottom: 16px; /* Espacio entre campos */
+}
+
+.login-form .btn-primary {
+    width: 100%;
+    background-color: #2271b1;
+    border-color: #2271b1;
+    padding: 8px;
+    font-size: 14px;
+    border-radius: 3px;
+    margin-top: 8px; /* Espacio antes del botón de login */
+}
+
+.login-form .btn-whatsapp {
+    width: 100%;
+    background-color: #25D366;
+    border-color: #25D366;
+    color: white;
+    padding: 8px;
+    font-size: 14px;
+    border-radius: 3px;
+    margin-top: 12px; /* Espacio antes del botón de WhatsApp */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-form .btn-whatsapp svg {
+    margin-right: 8px;
+}
+
+.login-links {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.login-links a {
+    color: #555d66;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.login-links a:hover {
+    color: #0073aa;
+}

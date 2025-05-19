@@ -1,0 +1,139 @@
+.topbar {
+    background-color: #f8f9fa;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar-sticky {
+    position: relative;
+    top: 0;
+    height: calc(100vh - 48px);
+    padding-top: .5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+main {
+    padding-top: 68px; /* Increased padding to compensate for fixed topbar */
+    margin-left: 16.666%; /* Equivalent to col-md-2 in Bootstrap */
+    margin-top: 0; /* Remove margin-top as padding-top is sufficient */
+}
+
+.multimedia-card {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.multimedia-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 300px; /* Adjust as needed */
+    background-color: #f8f9fa;
+    padding: 20px;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    transform: translateX(100%); /* Initially hidden */
+    transition: transform 0.3s ease-in-out;
+    z-index: 1000;
+}
+
+.multimedia-sidebar.show {
+    transform: translateX(0);
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #cccccc;
+    padding-bottom: 10px;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.topbar {
+    background-color: #f8f9fa;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px; /* Adjust to match sidebar padding */
+    z-index: 1000;
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+}
+
+.project-name {
+    font-weight: bold;
+    margin-right: 40px;
+}
+
+.breadcrumb-placeholder {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+}
+
+.user-avatar {
+    margin-left: 20px;
+    cursor: pointer;
+}
+
+.user-sidebar {
+    position: fixed;
+    top: 48px; /* Below the topbar */
+    right: 0;
+    bottom: 0;
+    width: 300px; /* Adjust as needed */
+    background-color: #f8f9fa;
+    padding: 20px;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    transform: translateX(100%); /* Initially hidden */
+    transition: transform 0.3s ease-in-out;
+    z-index: 1000;
+}
+
+.user-sidebar.show {
+    transform: translateX(0);
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+}
+
+.user-avatar {
+    margin-left: 20px;
+    cursor: pointer;
+}

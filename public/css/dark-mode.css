@@ -1,0 +1,62 @@
+/* Dark mode styles */
+body.dark-mode {
+    background-color: #1a1a1a;
+    color: #ffffff;
+}
+
+.dark-mode .topbar {
+    background-color: #343a40;
+    color: #ffffff;
+}
+
+.dark-mode .sidebar {
+    background-color: #343a40;
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, .1);
+}
+
+.dark-mode .sidebar .nav-link {
+    color: #cccccc !important; /* Adjusted color for better visibility */
+}
+
+.dark-mode .sidebar .nav-link.active {
+    color: #ffffff !important; /* Adjusted color for better visibility */
+    background-color: #454d55;
+}
+
+.dark-mode main {
+    color: #ffffff;
+}
+
+.dark-mode .card {
+    background-color: #454d55;
+    color: #ffffff;
+}
+
+.dark-mode .card-title {
+    color: #ffffff;
+}
+
+.dark-mode .card-text {
+    color: #cccccc;
+}
+
+.dark-mode .breadcrumb-item a {
+    color: #cccccc;
+}
+
+.dark-mode .breadcrumb-item.active {
+    color: #ffffff;
+}
+
+.dark-mode .multimedia-card {
+    background-color: #454d55;
+    color: #ffffff;
+}
+
+.dark-mode .multimedia-card .card-body {
+    color: #ffffff !important; /* Added !important to override default Bootstrap styles */
+}
+
+.dark-mode .multimedia-card .card-text {
+    color: #cccccc !important; /* Added !important to override default Bootstrap styles */
+}

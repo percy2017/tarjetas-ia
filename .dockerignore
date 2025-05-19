@@ -1,0 +1,31 @@
+# Ignorar dependencias locales, se instalarán en el contenedor
+node_modules
+
+# Ignorar control de versiones
+.git
+.gitignore
+
+# Ignorar archivos de Docker
+Dockerfile
+docker-compose.yml
+
+# Ignorar variables de entorno locales (se pasarán a través de Docker Compose para producción)
+.env
+
+# Ignorar archivos de desarrollo y logs
+*.md
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs
+*.log
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de configuración de IDE (opcional, pero buena práctica)
+.idea/
+.vscode/
+*.swp

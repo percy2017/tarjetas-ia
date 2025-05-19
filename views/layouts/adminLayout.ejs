@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" href="data:image/svg+xml,<svg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><rect width='100' height='100' rx='15' fill='%232271b1'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='40' fill='%23ffffff'>TIA</text></svg>" type="image/svg+xml">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
+    <link rel="stylesheet" type="text/css" href="/css/dataTables.dataTables.min.css">
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-left">
+            <h2 class="project-name">TarjetasIA</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb" style="background-color: transparent; padding: 0;">
+                    <li class="breadcrumb-item"><a href="/admin">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page"><%= currentPage %></li>
+                </ol>
+            </nav>
+        </div>
+        <div class="topbar-right">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="darkModeSwitch">
+                <label class="form-check-label" for="darkModeSwitch">Dark Mode</label>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="30px" height="30px" class="rounded-circle user-avatar" id="userAvatar">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+            <a href="/logout" class="btn btn-outline-danger btn-sm">Salir</a>
+        </div>
+    </div>
+
+    <div id="user-sidebar" class="user-sidebar">
+        <div class="sidebar-header">
+            <h3>Perfil de Usuario</h3>
+            <button id="close-user-sidebar" class="close-button">&times;</button>
+        </div>
+        <div class="sidebar-body">
+            <p><strong>Nombre:</strong> <span id="user-name"></span></p>
+            <p><strong>Correo:</strong> <span id="user-email"></span></p>
+            </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+                <div class="sidebar-sticky">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/admin">
+                                Panel
+                            </a>
+                        </li>
+                        <!-- <li class="nav-item">
+                            <a class="nav-link" href="/admin/clientes">
+                                Clientes
+                            </a>
+                        </li> -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="/admin/ventas">
+                                Ventas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/admin/previsualizador">
+                                Previsualizador
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/admin/multimedia">
+                                Multimedia
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/admin/configuracion">
+                                Configuración
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+            <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
+                <%- body %>
+            </main>
+        </div>
+    </div>
+    <script type="text/javascript" src="/js/jquery.min.js"></script>
+    <script type="text/javascript" src="/js/dataTables.core.js"></script>
+    <script type="text/javascript" src="/js/dataTables.dataTables.min.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const darkModeSwitch = document.getElementById('darkModeSwitch');
+        const body = document.body;
+
+        // Check for saved preference in localStorage
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            body.classList.add('dark-mode');
+            darkModeSwitch.checked = true;
+        }
+
+        darkModeSwitch.addEventListener('change', () => {
+            if (darkModeSwitch.checked) {
+                body.classList.add('dark-mode');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.remove('dark-mode');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+
+        // User Sidebar
+        const userAvatar = document.getElementById('userAvatar');
+        const userSidebar = document.getElementById('user-sidebar');
+        const closeUserSidebarButton = document.getElementById('close-user-sidebar');
+        const userName = document.getElementById('user-name');
+        const userEmail = document.getElementById('user-email');
+
+        userAvatar.addEventListener('click', () => {
+            userSidebar.classList.toggle('show');
+        });
+
+        closeUserSidebarButton.addEventListener('click', () => {
+            userSidebar.classList.remove('show');
+        });
+
+        // Sample user data (replace with actual data from your application)
+        const userData = {
+            name: 'Percy Alvarez',
+            email: 'percyalvarez@gmail.com'
+        };
+
+        userName.textContent = userData.name;
+        userEmail.textContent = userData.email;
+
+        // Set active class on sidebar menu
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll('.sidebar .nav-link');
+
+        navLinks.forEach(link => {
+            link.classList.remove('active'); // Remove active class from all links
+            if (link.getAttribute('href') === currentPath) {
+                link.classList.add('active'); // Add active class to the current page's link
+            }
+        });
+    </script>
+    <%- block('pageScripts') %>
+</body>
+</html>

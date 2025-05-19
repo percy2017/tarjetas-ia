@@ -1,0 +1,159 @@
+<% layout('layouts/adminLayout') %>
+
+<h2>Gestión de Multimedia</h2>
+
+<div class="progress" style="display: none;">
+    <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+</div>
+
+<form action="/admin/multimedia/upload" method="post" enctype="multipart/form-data" class="row g-3 align-items-center">
+    <div class="col-auto">
+        <label for="multimediaFiles" class="form-label visually-hidden">Seleccionar archivos:</label>
+        <input class="form-control" type="file" id="multimediaFiles" name="multimediaFiles" multiple>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Subir</button>
+    </div>
+</form>
+
+<div id="multimedia-list" class="mt-4">
+    <!-- <h2>Archivos Subidos</h2> -->
+    <div class="row">
+        <% files.forEach(function(file) { %>
+            <div class="col-md-3 mb-3">
+                <div class="card multimedia-card" data-filename="<%= file.filename %>" data-mimetype="<%= file.mimeType %>">
+                    <% if (file.mimeType.startsWith('image/')) { %>
+                        <img src="/uploads/<%= file.filename %>" class="card-img-top" alt="<%= file.filename %>">
+                    <% } else if (file.mimeType.startsWith('video/')) { %>
+                        <video controls class="card-img-top">
+                            <source src="/uploads/<%= file.filename %>" type="<%= file.mimeType %>">
+                            Your browser does not support the video tag.
+                        </video>
+                    <% } else { %>
+                        <div class="card-img-top d-flex align-items-center justify-content-center" style="height: 150px; background-color: #e9ecef;">
+                            <i class="fas fa-file fa-3x text-muted"></i>
+                        </div>
+                    <% } %>
+                    <div class="card-body">
+                        <p class="card-text"><%= file.filename %></p>
+                    </div>
+                </div>
+            </div>
+        <% }); %>
+    </div>
+</div>
+
+<div id="multimedia-sidebar" class="multimedia-sidebar">
+    <div class="sidebar-header">
+        <h4>Detalles</h4>
+        <button id="close-sidebar" class="close-button">&times;</button>
+    </div>
+    <div class="sidebar-body">
+        <img src="" alt="Vista previa" class="img-fluid mb-3" id="sidebar-preview">
+        <p><strong>Nombre del archivo:</strong> <span id="sidebar-filename"></span></p>
+        <p><strong>URL pública:</strong> <span id="sidebar-url"></span></p>
+        <button class="btn btn-secondary btn-sm" id="copy-url">Copiar URL</button>
+    </div>
+</div>
+
+<script>
+    const multimediaCards = document.querySelectorAll('.multimedia-card');
+    const multimediaSidebar = document.getElementById('multimedia-sidebar');
+    const closeSidebarButton = document.getElementById('close-sidebar');
+    const sidebarPreview = document.getElementById('sidebar-preview');
+    const sidebarFilename = document.getElementById('sidebar-filename');
+    const sidebarUrl = document.getElementById('sidebar-url');
+    const copyUrlButton = document.getElementById('copy-url');
+
+    multimediaCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const filename = card.dataset.filename;
+            const mimeType = card.dataset.mimetype;
+            const fileUrl = `/uploads/${filename}`;
+            const fullUrl = `${window.location.origin}${fileUrl}`; // Construct full URL
+
+            console.log('Clicked file:', filename);
+            console.log('MIME type:', mimeType);
+            console.log('File URL:', fileUrl);
+            console.log('Full URL:', fullUrl);
+
+            sidebarFilename.textContent = filename;
+            sidebarUrl.textContent = fullUrl; // Display full URL
+
+            // Clear previous preview content
+            sidebarPreview.innerHTML = '';
+
+            let previewElement;
+
+            if (mimeType.startsWith('image/')) {
+                console.log('Creating image preview');
+                previewElement = document.createElement('img');
+                previewElement.src = fileUrl;
+                previewElement.alt = 'Vista previa';
+                previewElement.classList.add('img-fluid', 'mb-3');
+            } else if (mimeType.startsWith('video/') || mimeType.includes('mp4') || mimeType.includes('ogg') || mimeType.includes('webm')) {
+                console.log('Creating video preview');
+                previewElement = document.createElement('video');
+                previewElement.controls = true;
+                previewElement.classList.add('img-fluid', 'mb-3'); // Use img-fluid for responsiveness
+                const source = document.createElement('source');
+                source.src = fileUrl;
+                source.type = mimeType;
+                previewElement.appendChild(source);
+            } else if (mimeType === 'application/pdf') {
+                console.log('Creating PDF preview');
+                previewElement = document.createElement('iframe');
+                previewElement.src = fileUrl;
+                previewElement.style.width = '100%';
+                previewElement.style.height = '300px';
+            } else {
+                console.log('Creating generic file icon preview');
+                previewElement = document.createElement('div');
+                previewElement.classList.add('d-flex', 'align-items-center', 'justify-content-center');
+                previewElement.style.height = '150px';
+                previewElement.style.backgroundColor = '#e9ecef';
+                previewElement.innerHTML = '<i class="fas fa-file fa-3x text-muted"></i>';
+            }
+
+            sidebarPreview.appendChild(previewElement);
+
+            multimediaSidebar.classList.add('show');
+        });
+    });
+
+    closeSidebarButton.addEventListener('click', () => {
+        multimediaSidebar.classList.remove('show');
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            multimediaSidebar.classList.remove('show');
+        }
+    });
+
+    copyUrlButton.addEventListener('click', () => {
+        const urlToCopy = sidebarUrl.textContent;
+        navigator.clipboard.writeText(urlToCopy).then(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'URL copiada',
+                text: 'La URL pública se ha copiado al portapapeles.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        }).catch(err => {
+            console.error('Error al copiar la URL:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al copiar',
+                text: 'No se pudo copiar la URL al portapapeles.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        });
+    });
+</script>
