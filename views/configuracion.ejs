@@ -1,83 +1,214 @@
 <%- layout('layouts/adminLayout') %>
 
 <div class="container-fluid">
-    <h2>Configuración General</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Configuración General</h2>
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addSectionModal">
+            + Añadir Nueva Sección
+        </button>
+    </div>
 
-    <div class="accordion" id="configAccordion">
-        <!-- Sección Modelo IA -->
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="headingIaModel">
-                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIaModel" aria-expanded="true" aria-controls="collapseIaModel">
-                    Configuración del Modelo de IA
-                </button>
-            </h2>
-            <div id="collapseIaModel" class="accordion-collapse collapse show" aria-labelledby="headingIaModel" data-bs-parent="#configAccordion">
-                <div class="accordion-body">
-                    <form>
-                        <div class="mb-3">
-                            <label for="iaApiUrl" class="form-label">URL del API del Modelo IA</label>
-                            <input type="url" class="form-control" id="iaApiUrl" placeholder="https://api.example.com/ia">
-                        </div>
-                        <div class="mb-3">
-                            <label for="iaApiKey" class="form-label">API Key del Modelo IA</label>
-                            <input type="text" class="form-control" id="iaApiKey" placeholder="tu-api-key">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Guardar Configuración IA</button>
-                    </form>
-                </div>
-            </div>
+    <% if (successMessage) { %>
+        <div class="alert alert-success" role="alert">
+            <%= successMessage %>
         </div>
-
-        <!-- Sección Socket.IO -->
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="headingSocketIo">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSocketIo" aria-expanded="false" aria-controls="collapseSocketIo">
-                    Configuración de Socket.IO
-                </button>
-            </h2>
-            <div id="collapseSocketIo" class="accordion-collapse collapse" aria-labelledby="headingSocketIo" data-bs-parent="#configAccordion">
-                <div class="accordion-body">
-                    <form>
-                        <div class="mb-3">
-                            <label for="socketIoUrl" class="form-label">URL del Servidor Socket.IO</label>
-                            <input type="url" class="form-control" id="socketIoUrl" placeholder="ws://localhost:3001">
-                        </div>
-                        <div class="mb-3">
-                            <label for="socketIoPath" class="form-label">Path de Socket.IO (opcional)</label>
-                            <input type="text" class="form-control" id="socketIoPath" placeholder="/socket.io">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Guardar Configuración Socket.IO</button>
-                    </form>
-                </div>
-            </div>
+    <% } %>
+    <% if (errorMessage) { %>
+        <div class="alert alert-danger" role="alert">
+            <%= errorMessage %>
         </div>
+    <% } %>
 
-        <!-- Sección Evolution API (WhatsApp) -->
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="headingEvolutionApi">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEvolutionApi" aria-expanded="false" aria-controls="collapseEvolutionApi">
-                    Configuración de Evolution API (WhatsApp)
-                </button>
-            </h2>
-            <div id="collapseEvolutionApi" class="accordion-collapse collapse" aria-labelledby="headingEvolutionApi" data-bs-parent="#configAccordion">
-                <div class="accordion-body">
-                    <form>
-                        <div class="mb-3">
-                            <label for="evolutionApiUrl" class="form-label">URL de Evolution API</label>
-                            <input type="url" class="form-control" id="evolutionApiUrl" placeholder="http://localhost:8080">
+    <% if (sections && sections.length > 0) { %>
+        <div class="accordion" id="configAccordion">
+            <% sections.forEach(function(section, index) { %>
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading-<%= section.section_key %>">
+                        <button class="accordion-button <%= index === 0 ? '' : 'collapsed' %>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-<%= section.section_key %>" aria-expanded="<%= index === 0 ? 'true' : 'false' %>" aria-controls="collapse-<%= section.section_key %>">
+                            <%= section.section_title %>
+                        </button>
+                    </h2>
+                    <div id="collapse-<%= section.section_key %>" class="accordion-collapse collapse <%= index === 0 ? 'show' : '' %>" aria-labelledby="heading-<%= section.section_key %>" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <form method="POST" action="/admin/configuracion/guardar/<%= section.section_key %>">
+                                <div id="form-container-<%= section.section_key %>"></div>
+                                <button type="submit" class="btn btn-primary mt-3">Guardar Cambios en <%= section.section_title %></button>
+                            </form>
                         </div>
-                        <div class="mb-3">
-                            <label for="evolutionApiKey" class="form-label">API Key de Evolution API</label>
-                            <input type="text" class="form-control" id="evolutionApiKey" placeholder="tu-evolution-api-key">
-                        </div>
-                        <div class="mb-3">
-                            <label for="evolutionInstance" class="form-label">Nombre de la Instancia</label>
-                            <input type="text" class="form-control" id="evolutionInstance" placeholder="defaultInstance">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Guardar Configuración Evolution API</button>
-                    </form>
+                    </div>
                 </div>
-            </div>
+            <% }); %>
+        </div>
+    <% } else { %>
+        <p class="mt-3">No hay secciones de configuración definidas. Haz clic en "Añadir Nueva Sección" para empezar.</p>
+    <% } %>
+</div>
+
+<!-- Modal para Añadir Nueva Sección -->
+<div class="modal fade" id="addSectionModal" tabindex="-1" aria-labelledby="addSectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="addSectionForm" action="/admin/configuracion/secciones/crear" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addSectionModalLabel">Añadir Nueva Sección de Configuración</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="section_key" class="form-label">Clave de Sección (única, sin espacios, ej: ia_config)</label>
+                        <input type="text" class="form-control" id="section_key" name="section_key" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="section_title" class="form-label">Título de Sección (visible en la UI)</label>
+                        <input type="text" class="form-control" id="section_title" name="section_title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="display_order" class="form-label">Orden de Visualización (número)</label>
+                        <input type="number" class="form-control" id="display_order" name="display_order" value="0">
+                    </div>
+                    <hr>
+                    <h5>Definir Campos para esta Sección:</h5>
+                    <div id="fieldsDefinitionContainer">
+                        <!-- Los campos se añadirán aquí dinámicamente -->
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addNewFieldButton">+ Añadir Campo</button>
+                    
+                    <!-- Plantilla para un nuevo campo (oculta) -->
+                    <div id="fieldRowTemplate" style="display: none;" class="row g-3 align-items-center mb-2 border p-2 rounded">
+                        <div class="col-md-2"><input type="text" class="form-control form-control-sm field-key" placeholder="Clave (key)" name="field_keys[]"></div>
+                        <div class="col-md-2"><input type="text" class="form-control form-control-sm field-label" placeholder="Etiqueta (label)" name="field_labels[]"></div>
+                        <div class="col-md-2">
+                            <select class="form-select form-select-sm field-type" name="field_types[]">
+                                <option value="text">Texto</option>
+                                <option value="textarea">Área de Texto</option>
+                                <option value="url">URL</option>
+                                <option value="password">Contraseña</option>
+                                <option value="number">Número</option>
+                                <option value="boolean">Booleano (checkbox)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2"><input type="text" class="form-control form-control-sm field-name" placeholder="Name (HTML)" name="field_names[]"></div>
+                        <div class="col-md-3"><input type="text" class="form-control form-control-sm field-placeholder" placeholder="Placeholder" name="field_placeholders[]"></div>
+                        <div class="col-md-1"><button type="button" class="btn btn-danger btn-sm removeFieldButton">X</button></div>
+                    </div>
+                    <input type="hidden" name="fields_json_string" id="fields_json_string">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Crear Sección</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+
+<% block('pageStyles', '<link href="https://code.cloudcms.com/alpaca/1.5.27/bootstrap/alpaca.min.css" rel="stylesheet" />') %>
+
+<% block('pageScripts').append(`
+    <script src="https://code.cloudcms.com/alpaca/1.5.27/bootstrap/alpaca.min.js"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.7/handlebars.min.js"><\/script>
+    <script type="text/javascript">
+        var sectionsDataForClient = ${JSON.stringify(sections || [])};
+
+        $(document).ready(function() {
+            // Lógica para Alpaca (renderizar secciones existentes)
+            let localSectionsData = []; 
+            if (typeof sectionsDataForClient !== 'undefined') {
+                localSectionsData = sectionsDataForClient;
+            }
+            
+            if (Array.isArray(localSectionsData)) {
+                localSectionsData.forEach(function(section) {
+                    if (!section || !section.fields_config_json) {
+                        console.warn("Skipping section due to missing fields_config_json:", section);
+                        return; 
+                    }
+
+                    const alpacaSchema = {
+                        "type": "object",
+                        "properties": {}
+                    };
+                    const alpacaOptions = {
+                        "fields": {}
+                    };
+                    const alpacaData = {};
+
+                    section.fields_config_json.forEach(function(field) {
+                        alpacaSchema.properties[field.name] = {
+                            "type": "string" // Default
+                        };
+                        if (field.type === 'url') alpacaSchema.properties[field.name].format = "uri";
+                        if (field.type === 'number') alpacaSchema.properties[field.name].type = "number";
+                        if (field.type === 'boolean') alpacaSchema.properties[field.name].type = "boolean";
+                        // textarea y password se manejan en options.type para Alpaca
+
+                        let alpacaFieldType = field.type;
+                        if (field.type === 'textarea' || field.type === 'password' || field.type === 'url' || field.type === 'number' || field.type === 'boolean') {
+                           // Alpaca usa estos tipos directamente en options
+                        } else {
+                           alpacaFieldType = 'text'; // Default para otros
+                        }
+                        
+                        alpacaOptions.fields[field.name] = {
+                            "label": field.label,
+                            "placeholder": field.placeholder,
+                            "type": alpacaFieldType
+                        };
+                        alpacaData[field.name] = field.value;
+                    });
+                
+                    alpacaOptions.buttons = {}; 
+
+                    $("#form-container-" + section.section_key).alpaca({
+                        "schema": alpacaSchema,
+                        "options": alpacaOptions,
+                        "data": alpacaData,
+                        "view": "bootstrap-edit-horizontal"
+                    });
+                });
+            }
+
+            // Lógica para el modal "Añadir Nueva Sección"
+            $('#addNewFieldButton').on('click', function() {
+                const newFieldRow = $('#fieldRowTemplate').clone().removeAttr('id').show();
+                $('#fieldsDefinitionContainer').append(newFieldRow);
+            });
+
+            $('#fieldsDefinitionContainer').on('click', '.removeFieldButton', function() {
+                $(this).closest('.row').remove();
+            });
+
+            $('#addSectionForm').on('submit', function(e) {
+                const fieldsArray = [];
+                $('#fieldsDefinitionContainer .row').each(function() {
+                    const fieldKey = $(this).find('.field-key').val();
+                    const fieldLabel = $(this).find('.field-label').val();
+                    const fieldType = $(this).find('.field-type').val();
+                    const fieldName = $(this).find('.field-name').val();
+                    const fieldPlaceholder = $(this).find('.field-placeholder').val();
+
+                    if (fieldKey && fieldLabel && fieldType && fieldName) { // Asegurar que los campos esenciales estén llenos
+                        fieldsArray.push({
+                            key: fieldKey,
+                            label: fieldLabel,
+                            type: fieldType,
+                            name: fieldName,
+                            placeholder: fieldPlaceholder || '',
+                            value: '' // Valor inicial siempre vacío para nuevos campos
+                        });
+                    }
+                });
+                $('#fields_json_string').val(JSON.stringify(fieldsArray));
+                // El formulario se enviará normalmente (no e.preventDefault())
+            });
+
+            // Añadir un campo por defecto al abrir el modal si no hay ninguno
+            $('#addSectionModal').on('show.bs.modal', function () {
+                if ($('#fieldsDefinitionContainer .row').length === 0) {
+                    $('#addNewFieldButton').trigger('click');
+                }
+            });
+        });
+    <\/script>
+`) %>

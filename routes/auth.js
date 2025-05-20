@@ -41,7 +41,11 @@ router.post('/login', async (req, res) => { // Convertida a async
           role: user.role,
           avatar_url: user.avatar_url,
           first_name: user.first_name,
-          last_name: user.last_name
+          last_name: user.last_name,
+          phone: user.phone,
+          tokens_used: user.tokens_used,
+          profile_slug: user.profile_slug,
+          created_at: user.created_at 
         };
         // Redirigir al admin solo si el rol es admin
         if (user.role === 'admin') {

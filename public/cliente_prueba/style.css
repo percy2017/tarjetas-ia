@@ -1,37 +1,18 @@
 body {
-    background-color: #1a1a1a;
-    font-family: 'Arial', sans-serif;
-    color: #ffffff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-}
-
-.card {
-    background-color: #2c2c2c;
-    border-radius: 10px;
-    padding: 30px;
+    font-family: Arial, sans-serif;
     text-align: center;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-.profile-img {
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-bottom: 20px;
-    border: 3px solid #ffffff;
 }
 
 h1 {
-    color: #ffffff;
-    margin-bottom: 10px;
+    color: #00698f;
+    font-size: 36px;
 }
 
 p {
-    color: #cccccc;
-    margin-bottom: 5px;
+    font-size: 18px;
+}
+
+img {
+    width: 80%;
+    margin: 20px auto;
 }

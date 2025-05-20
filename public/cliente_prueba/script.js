@@ -1,1 +1,1 @@
-console.log('Página generada para: sssssssssssaaaaaaaaaaa');
+console.log('Bienvenido a Aventuras por el Mundo!');

@@ -21,6 +21,8 @@ exports.seed = async function(knex) {
       phone: null, // Opcional
       avatar_url: null, // Opcional
       role: 'admin',
+      tokens_used: 0,
+      profile_slug: 'superadmin'
       // created_at y updated_at se llenarán automáticamente por timestamps(true, true) en la migración
     }
   ]);

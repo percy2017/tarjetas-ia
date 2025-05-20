@@ -10,6 +10,8 @@ exports.up = function(knex) {
     table.string('phone', 50).nullable();
     table.string('avatar_url', 500).nullable();
     table.string('role', 50).notNullable().defaultTo('customer'); // Nueva columna para el rol
+    table.integer('tokens_used').unsigned().notNullable().defaultTo(0);
+    table.string('profile_slug').unique().nullable();
     table.timestamps(true, true); // created_at y updated_at
   });
 };

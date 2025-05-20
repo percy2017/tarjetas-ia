@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="/css/dark-mode.css">
     <link rel="stylesheet" type="text/css" href="/css/dataTables.dataTables.min.css">
     <link rel="stylesheet" href="/css/sweetalert2.min.css"> <!-- SweetAlert2 CSS -->
+    <link href="/css/alpaca.min.css" rel="stylesheet" />
+    <%- block('pageStyles') %>
 </head>
 <body>
     <div class="topbar">
@@ -38,9 +40,18 @@
             <button id="close-user-sidebar" class="close-button">&times;</button>
         </div>
         <div class="sidebar-body">
-            <p><strong>Nombre:</strong> <span id="user-name"></span></p>
-            <p><strong>Correo:</strong> <span id="user-email"></span></p>
+            <div id="user-avatar-image-container" class="text-center mb-3">
+                <!-- El avatar se insertará aquí por JS si existe avatar_url -->
             </div>
+            <p><strong>Usuario:</strong> <span id="user-username-display"></span></p>
+            <p><strong>Nombre:</strong> <span id="user-name-display"></span></p>
+            <p><strong>Correo:</strong> <span id="user-email-display"></span></p>
+            <p><strong>Teléfono:</strong> <span id="user-phone-display"></span></p>
+            <p><strong>Rol:</strong> <span id="user-role-display"></span></p>
+            <p><strong>Tokens Usados:</strong> <span id="user-tokens-used-display"></span></p>
+            <p><strong>URL Perfil:</strong> <a id="user-profile-url-display" href="#" target="_blank"></a></p>
+            <p><strong>Miembro desde:</strong> <span id="user-created-at-display"></span></p>
+        </div>
     </div>
 
     <div class="container-fluid">
@@ -90,7 +101,9 @@
     <script type="text/javascript" src="/js/dataTables.core.js"></script>
     <script type="text/javascript" src="/js/dataTables.dataTables.min.js"></script>
     <script src="/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/sweetalert2.all.min.js"></script> <!-- SweetAlert2 JS -->
+    <script src="/js/sweetalert2.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.7/handlebars.min.js"></script>
+    <script src="/js/alpaca.min.js"></script>
     <script>
         const darkModeSwitch = document.getElementById('darkModeSwitch');
         const body = document.body;
@@ -113,11 +126,21 @@
         });
 
         // User Sidebar
-        const userAvatar = document.getElementById('userAvatar');
+        const userAvatar = document.getElementById('userAvatar'); // El SVG de la topbar
         const userSidebar = document.getElementById('user-sidebar');
         const closeUserSidebarButton = document.getElementById('close-user-sidebar');
-        const userNameDisplay = document.getElementById('user-name'); // Renamed for clarity
-        const userEmailDisplay = document.getElementById('user-email'); // Renamed for clarity
+        
+        // Elementos de la Sidebar
+        const userNameDisplay = document.getElementById('user-name-display');
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const userUsernameDisplay = document.getElementById('user-username-display');
+        const userPhoneDisplay = document.getElementById('user-phone-display');
+        const userRoleDisplay = document.getElementById('user-role-display');
+        const userTokensUsedDisplay = document.getElementById('user-tokens-used-display');
+        const userProfileUrlDisplay = document.getElementById('user-profile-url-display');
+        const userCreatedAtDisplay = document.getElementById('user-created-at-display');
+        const userAvatarImageContainer = document.getElementById('user-avatar-image-container');
+
 
         // Acceder a los datos del usuario pasados desde el servidor vía res.locals.currentUser
         // El middleware en app.js se encarga de poblar currentUser (que será null o un objeto)
@@ -131,37 +154,68 @@
             currentUser = {}; // Fallback a objeto vacío en caso de error de parseo
         }
         
+        if (currentUser && Object.keys(currentUser).length > 0) {
+            if (userNameDisplay) {
+                if (currentUser.first_name || currentUser.last_name) {
+                    userNameDisplay.textContent = `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim();
+                } else if (currentUser.username) {
+                    userNameDisplay.textContent = currentUser.username; // Fallback si no hay nombre/apellido
+                } else {
+                    userNameDisplay.textContent = 'N/A';
+                }
+            }
+            if (userEmailDisplay) userEmailDisplay.textContent = currentUser.email || 'N/A';
+            if (userUsernameDisplay) userUsernameDisplay.textContent = currentUser.username || 'N/A';
+            if (userPhoneDisplay) userPhoneDisplay.textContent = currentUser.phone || 'N/A';
+            if (userRoleDisplay) userRoleDisplay.textContent = currentUser.role || 'N/A';
+            if (userTokensUsedDisplay) userTokensUsedDisplay.textContent = currentUser.tokens_used !== undefined ? currentUser.tokens_used.toString() : '0';
+            
+            if (userProfileUrlDisplay && currentUser.profile_slug) {
+                const profileUrl = `/${currentUser.profile_slug}`; // Asumiendo que las rutas de perfil son /:slug
+                userProfileUrlDisplay.href = profileUrl;
+                userProfileUrlDisplay.textContent = profileUrl;
+            } else if (userProfileUrlDisplay) {
+                userProfileUrlDisplay.textContent = 'N/A';
+                userProfileUrlDisplay.removeAttribute('href');
+            }
 
-        if (userNameDisplay && currentUser && Object.keys(currentUser).length > 0) { // Verificar que currentUser no sea null y no sea un objeto vacío
-            if (currentUser.first_name || currentUser.last_name) {
-                userNameDisplay.textContent = `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim();
-            } else if (currentUser.username) {
-                userNameDisplay.textContent = currentUser.username;
-            } else {
-                userNameDisplay.textContent = 'Usuario'; // Fallback
+            if (userCreatedAtDisplay && currentUser.created_at) {
+                try {
+                    userCreatedAtDisplay.textContent = new Date(currentUser.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                } catch (e) {
+                    userCreatedAtDisplay.textContent = currentUser.created_at; // Mostrar tal cual si hay error de formato
+                }
+            } else if (userCreatedAtDisplay) {
+                userCreatedAtDisplay.textContent = 'N/A';
+            }
+
+            if (userAvatarImageContainer && currentUser.avatar_url) {
+                const img = document.createElement('img');
+                img.src = currentUser.avatar_url;
+                img.alt = 'Avatar';
+                img.style.width = '80px'; // Ajusta el tamaño como prefieras
+                img.style.height = '80px';
+                img.classList.add('rounded-circle', 'mb-2');
+                userAvatarImageContainer.innerHTML = ''; // Limpiar por si acaso
+                userAvatarImageContainer.appendChild(img);
+            } else if (userAvatarImageContainer) {
+                 // Podrías poner un avatar genérico si no hay URL
+                userAvatarImageContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="80px" height="80px" class="rounded-circle mb-2" style="opacity:0.5;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+            }
+
+        } else { // Si no hay currentUser o está vacío
+            const fieldsToClear = [userNameDisplay, userEmailDisplay, userUsernameDisplay, userPhoneDisplay, userRoleDisplay, userTokensUsedDisplay, userCreatedAtDisplay];
+            fieldsToClear.forEach(field => {
+                if (field) field.textContent = 'N/A';
+            });
+            if (userProfileUrlDisplay) {
+                userProfileUrlDisplay.textContent = 'N/A';
+                userProfileUrlDisplay.removeAttribute('href');
+            }
+            if (userAvatarImageContainer) {
+                userAvatarImageContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="80px" height="80px" class="rounded-circle mb-2" style="opacity:0.5;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
             }
         }
-
-        if (userEmailDisplay && currentUser.email) {
-            userEmailDisplay.textContent = currentUser.email;
-        } else if (userEmailDisplay) {
-            userEmailDisplay.textContent = 'No disponible'; // Fallback
-        }
-        
-        // Lógica para el avatar (si se quiere mostrar la imagen del avatar_url)
-        // const userAvatarIcon = document.getElementById('userAvatar'); // Este es el SVG
-        // if (userAvatarIcon && currentUser.avatar_url) {
-        //   // Aquí podrías reemplazar el SVG con un <img> o modificar el SVG si es dinámico
-        //   // Por ejemplo, crear un img y reemplazar el userAvatarIcon:
-        //   // const imgAvatar = document.createElement('img');
-        //   // imgAvatar.src = currentUser.avatar_url;
-        //   // imgAvatar.alt = 'Avatar';
-        //   // imgAvatar.classList.add('rounded-circle'); // Mantener estilo
-        //   // imgAvatar.style.width = '30px'; imgAvatar.style.height = '30px'; // Mantener tamaño
-        //   // userAvatarIcon.parentNode.replaceChild(imgAvatar, userAvatarIcon);
-        //   // userAvatar = imgAvatar; // Reasignar para el event listener si se reemplaza
-        // }
-
 
         userAvatar.addEventListener('click', () => {
             userSidebar.classList.toggle('show');
