@@ -12,6 +12,7 @@
   "type": "module",
   "description": "",
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "bootstrap": "^5.3.6",
     "datatables.net": "^2.3.1",
@@ -22,8 +23,10 @@
     "express": "^5.1.0",
     "express-session": "^1.18.1",
     "jquery": "^3.7.1",
+    "knex": "^3.1.0",
     "mime-types": "^3.0.1",
     "multer": "^2.0.0",
+    "mysql2": "^3.14.1",
     "sweetalert2": "^11.21.2"
   },
   "devDependencies": {

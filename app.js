@@ -3,6 +3,8 @@ dotenv.config();
 
 import express from 'express';
 import { fileURLToPath } from 'url';
+import path from 'path'; // Importar path
+import fs from 'fs'; // Importar fs
 import authRoutes from './routes/auth.js';
 import bodyParser from 'body-parser';
 import session from 'express-session';
@@ -22,7 +24,18 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(session({ secret: process.env.SESSION_SECRET || 'default_fallback_secret', resave: false, saveUninitialized: false }));
-app.use('/', authRoutes);
+
+// Middleware para pasar datos del usuario a las vistas
+app.use((req, res, next) => {
+  if (req.session && req.session.user) {
+    res.locals.currentUser = req.session.user;
+  } else {
+    res.locals.currentUser = null;
+  }
+  next();
+});
+
+app.use('/', authRoutes); // Rutas de autenticación primero
 
 // TODO: Configurar conexión a MySQL usando variables de entorno
 // import mysql from 'mysql2/promise'; // o el driver que prefieras
@@ -52,11 +65,12 @@ const requireLogin = (req, res, next) => {
 };
 
 app.get('/admin', requireLogin, (req, res) => {
-  console.log(req.session);
-  res.render('admin', { title: 'Admin Dashboard', user: 'admin', currentPage: 'Dashboard' });
+  // currentUser estará disponible en la plantilla gracias al middleware
+  res.render('admin', { title: 'Admin Dashboard', currentPage: 'Dashboard' });
 });
 
 app.get('/admin/previsualizador', requireLogin, (req, res) => {
+  // currentUser estará disponible en la plantilla
   res.render('previsualizador', { title: 'Previsualizador de Páginas', currentPage: 'Previsualizador de Páginas' });
 });
 
@@ -84,10 +98,10 @@ app.get('/admin/multimedia', requireLogin, (req, res) => {
       const mimeType = mimeTypes.lookup(file) || 'unknown';
       return {
         filename: file,
-        mimeType: mimeType
+        mimeType: mimeType // Aquí podríamos añadir más info si la tuviéramos del fs.statSync
       };
     });
-
+    // currentUser estará disponible en la plantilla
     res.render('multimedia', { title: 'Gestión de Multimedia', files: multimediaFiles, currentPage: 'Multimedia' });
   });
 });
@@ -98,15 +112,16 @@ app.post('/admin/multimedia/upload', requireLogin, upload.array('multimediaFiles
   res.redirect('/admin/multimedia');
 });
 
-import fs from 'fs';
-import path from 'path';
+// fs y path ya están importados arriba
 
 app.get('/admin/ventas', requireLogin, (req, res) => {
   const ventasData = JSON.parse(fs.readFileSync(path.join(__dirname, 'public', 'data', 'ventas.json'), 'utf-8'));
+  // currentUser estará disponible en la plantilla
   res.render('ventas', { title: 'Ventas', ventas: ventasData, currentPage: 'Ventas' });
 });
 
 app.get('/admin/configuracion', requireLogin, (req, res) => {
+  // currentUser estará disponible en la plantilla
   res.render('configuracion', { title: 'Configuración', currentPage: 'Configuración' });
 });
 

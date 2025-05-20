@@ -20,3 +20,7 @@ pnpm-debug.log*
 .idea/
 .vscode/
 *.swp
+
+# Directorios de contenido dinámico o de prueba (opcional, descomentar si se desea ignorar)
+public/uploads/
+# public/cliente_prueba/

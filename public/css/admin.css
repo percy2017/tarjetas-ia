@@ -31,15 +31,15 @@ main {
     margin-top: 0; /* Remove margin-top as padding-top is sufficient */
 }
 
-.multimedia-card {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+/* .multimedia-card { */ /* Original rule - removing as it might conflict with grid item styles */
+    /* width: 100%; */
+    /* height: 100%; */
+    /* object-fit: cover; */ /* This should be on the thumbnail itself, not the card */
+/* } */
 
 .multimedia-sidebar {
     position: fixed;
-    top: 0;
+    top: 48px; /* Adjust to match topbar height, similar to user-sidebar */
     right: 0;
     bottom: 0;
     width: 300px; /* Adjust as needed */
@@ -109,6 +109,88 @@ main {
     margin-left: 20px;
     cursor: pointer;
 }
+
+/* Multimedia Grid Styles */
+.multimedia-grid-item {
+    border: 1px solid #dee2e6;
+    padding: 0; /* Remove card padding if thumbnail container handles it */
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Ensure cards in a row take same height if needed */
+    cursor: pointer;
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.multimedia-grid-item:hover {
+    box-shadow: 0 .125rem .25rem rgba(0,0,0,.075), 0 .5rem 1rem rgba(0,0,0,.15);
+}
+
+.multimedia-thumbnail-container {
+    width: 100%;
+    padding-top: 100%; /* Creates a square aspect ratio (1:1) */
+    position: relative;
+    background-color: #f8f9fa; /* Fallback background */
+    overflow: hidden; /* Ensure content like play icon stays within */
+}
+
+.multimedia-thumbnail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Cover the area, cropping if necessary */
+}
+
+.multimedia-thumbnail-generic {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #e9ecef;
+}
+
+.multimedia-filename {
+    padding: 0.5rem;
+    text-align: center;
+    background-color: #f8f9fa; /* Light background for filename */
+    border-top: 1px solid #dee2e6;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.video-play-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.8);
+    pointer-events: none; /* So it doesn't interfere with card click */
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    padding: 10px;
+    width: 50px; /* Fixed size for the circle */
+    height: 50px; /* Fixed size for the circle */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Ensure the card itself doesn't have extra padding if multimedia-grid-item handles it */
+.multimedia-grid .multimedia-card.multimedia-grid-item { /* This is the card itself */
+    padding: 0; /* Remove Bootstrap card padding */
+    display: flex; /* Ensure flex properties for children */
+    flex-direction: column;
+    /* height: 100%; */ /* Let content define height, or ensure wrapper has fixed height if rows should align perfectly */
+}
+
+/* .multimedia-grid .multimedia-card.multimedia-grid-item .card-body { */ /* This rule is no longer needed as .card-body was removed from grid item structure */
+    /* display: none; */ 
+/* } */
 
 .user-sidebar {
     position: fixed;

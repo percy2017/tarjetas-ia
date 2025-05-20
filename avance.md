@@ -13,12 +13,13 @@
 *   **Gestión de Sesiones:** `express-session` (actualmente con `MemoryStore`).
 *   **Subida de Archivos:** `multer`.
 *   **Variables de Entorno (Desarrollo):** `dotenv`.
+*   **Base de Datos:** MySQL, con gestión de esquemas y seeds mediante **Knex.js**.
+*   **Hashing de Contraseñas:** **bcryptjs**.
 *   **Contenerización y Despliegue:** Docker, Docker Compose.
-*   **Base de Datos (Planeada):** MySQL.
 
 ## 3. Estado Actual del Proyecto
 
-El proyecto cuenta con una landing page, un sistema de login básico, y un panel de administración con varias secciones funcionales. La aplicación ha sido configurada para usar variables de entorno y se han creado los archivos necesarios para su despliegue con Docker (`Dockerfile`, `docker-compose.yml`, `.dockerignore`). La aplicación se ha desplegado exitosamente en un VPS en `http://154.38.177.115:6001/`.
+El proyecto cuenta con una landing page, un sistema de **login conectado a una base de datos MySQL (tabla `users`)**, y un panel de administración con varias secciones funcionales y mejoras en la interfaz de usuario. La gestión del esquema de la base de datos se realiza con **Knex.js (migraciones y seeds)**. La aplicación ha sido configurada para usar variables de entorno y se han creado los archivos necesarios para su despliegue con Docker (`Dockerfile`, `docker-compose.yml`, `.dockerignore`). La aplicación se ha desplegado exitosamente en un VPS en `http://154.38.177.115:6001/`.
 
 ## 4. Detalle de Funcionalidades Implementadas
 
@@ -59,15 +60,18 @@ El proyecto cuenta con una landing page, un sistema de login básico, y un panel
     *   Carga de JS comunes (al final del body): `jquery.min.js`, `dataTables.core.js`, `dataTables.dataTables.min.js`, `bootstrap.bundle.min.js`, script para Dark Mode y lógica de sidebar.
     *   Bloque `<%- block('pageScripts') %>` para scripts específicos de cada página.
     *   Favicon SVG inline.
+    *   **Sidebar de Perfil de Usuario ahora muestra datos dinámicos (nombre, email) del usuario en sesión.**
 *   **`views/admin.ejs` (Dashboard Admin):**
-    *   Página de bienvenida simple.
+    *   Página de bienvenida **ahora muestra el nombre del usuario en sesión.**
 *   **`views/previsualizador.ejs`:**
     *   Formulario para un "prompt".
     *   Al enviar, crea archivos `index.html`, `style.css`, `script.js` en `public/cliente_prueba/` con contenido básico generado a partir del prompt.
 *   **`views/multimedia.ejs`:**
-    *   Formulario para subir múltiples archivos usando `multer` (guardados en `public/uploads/`).
-    *   Muestra los archivos subidos con previsualizaciones (imágenes, videos, icono genérico para otros).
-    *   Barra lateral de detalles que aparece al hacer clic en un archivo, mostrando nombre, URL pública y botón para copiar URL (usa SweetAlert2 para notificaciones).
+    *   Formulario para subir múltiples archivos usando `multer` (guardados en `public/uploads/`). **Controles de subida, búsqueda y botón ahora en una sola fila.**
+    *   Muestra los archivos subidos con previsualizaciones en una **cuadrícula rediseñada estilo WordPress (miniaturas cuadradas y uniformes)**.
+    *   **Mejoras en previsualizaciones:** Icono específico para PDF en la grilla, previsualización de video funcional en el sidebar.
+    *   **Búsqueda de multimedia del lado del cliente implementada.**
+    *   Barra lateral de detalles que aparece al hacer clic en un archivo, mostrando nombre, URL pública y botón para copiar URL (usa SweetAlert2 para notificaciones). **Ajustes de modo oscuro y altura del sidebar de detalles implementados.**
 *   **`views/ventas.ejs`:**
     *   Muestra datos de ventas desde `public/data/ventas.json`.
     *   Utiliza DataTables para una tabla interactiva (paginación, búsqueda, ordenamiento).
@@ -82,10 +86,21 @@ El proyecto cuenta con una landing page, un sistema de login básico, y un panel
 ### 4.3. Autenticación (`routes/auth.js`)
 
 *   Ruta GET `/login`: Renderiza `login.ejs`. Redirige a `/admin` si ya está logueado.
-*   Ruta POST `/login`: Valida credenciales `admin`/`password` (hardcodeadas). Establece `req.session.loggedIn = true`.
+*   Ruta POST `/login`: **Valida credenciales contra la tabla `users` en la base de datos MySQL. Compara contraseñas hasheadas con `bcryptjs`. Establece `req.session.loggedIn = true` y `req.session.user` con datos del usuario (id, username, email, rol, etc.). Solo permite acceso a `/admin` si el rol es 'admin'.**
 *   Ruta GET `/logout`: Destruye la sesión y redirige a `/login`.
 
-## 5. Estructura de Archivos Clave
+### 4.4. Middleware y Configuración Adicional en `app.js`
+*   Middleware para pasar `req.session.user` a `res.locals.currentUser`, haciéndolo disponible globalmente en las plantillas EJS.
+
+## 5. Configuración de Base de Datos (Knex.js)
+*   **`knexfile.cjs`:** Archivo de configuración de Knex para entornos de desarrollo y producción, especificando cliente `mysql2`, detalles de conexión y directorios para migraciones y seeds. Adaptado para funcionar en un proyecto con `"type": "module"` usando la extensión `.cjs`.
+*   **`db.cjs`:** Módulo para centralizar la inicialización y exportación de la instancia de Knex para ser usada en la aplicación.
+*   **Migraciones (`db/migrations/`):**
+    *   `YYYYMMDDHHMMSS_create_users_table.cjs`: Define el esquema para la tabla `users` (incluyendo `id`, `username`, `email`, `password_hash`, `first_name`, `last_name`, `phone`, `avatar_url`, `role` con default 'customer', y `timestamps`).
+*   **Seeds (`db/seeds/`):**
+    *   `01_create_admin_user.cjs`: Script para poblar la tabla `users` con un usuario administrador inicial (`admin`/`admin2025`, rol `admin`), con la contraseña hasheada usando `bcryptjs`.
+
+## 6. Estructura de Archivos Clave
 
 *   `app.js`: Archivo principal del servidor Express.
 *   `.env`: Variables de entorno para desarrollo.
@@ -104,7 +119,7 @@ El proyecto cuenta con una landing page, un sistema de login básico, y un panel
     *   `layouts/adminLayout.ejs`: Layout principal del panel de administración.
     *   Otras vistas para cada página.
 
-## 6. Configuración de Despliegue (Docker)
+## 7. Configuración de Despliegue (Docker)
 
 *   **`Dockerfile`:**
     *   Base: `node:18-alpine`.
@@ -130,26 +145,36 @@ El proyecto cuenta con una landing page, un sistema de login básico, y un panel
 ## 7. Puntos Pendientes y Próximas Mejoras (Identificados)
 
 *   **Almacén de Sesiones Persistente:** Reemplazar `MemoryStore` por defecto de `express-session` con una solución como `connect-redis` o una basada en MySQL (ej. `connect-session-knex`) para producción.
-*   **Conexión a Base de Datos MySQL:**
-    *   Instalar un driver de MySQL (ej. `mysql2`).
-    *   Implementar la lógica de conexión en `app.js` usando las variables de entorno.
-    *   Crear tablas necesarias.
-*   **Autenticación con Base de Datos:** Modificar la lógica de login para validar usuarios contra la base de datos en lugar de credenciales hardcodeadas.
-*   **Funcionalidad de Guardado en Configuración:** Implementar el backend para guardar los datos de los formularios de la página `/admin/configuracion` (probablemente en la base de datos o en un archivo de configuración).
+*   **Conexión a Base de Datos MySQL:** **Realizado parcialmente.**
+    *   Driver `mysql2` instalado.
+    *   Lógica de conexión implementada mediante `knexfile.cjs` y `db.cjs`.
+    *   Tabla `users` creada mediante migración Knex.
+*   **Autenticación con Base de Datos:** **Realizado.** Lógica de login modificada para usar la tabla `users` y `bcryptjs`.
+*   **Crear Migraciones para Tablas Restantes:**
+    *   Definir y crear migraciones para `media_files` (para metadatos de archivos subidos).
+    *   Definir y crear migraciones para `app_config` (para guardar configuraciones de la aplicación).
+*   **Integrar `media_files` con Sección Multimedia:**
+    *   Guardar metadatos en `media_files` al subir archivos.
+    *   Leer de `media_files` para mostrar la galería y detalles.
+*   **Funcionalidad de Guardado en Configuración:** Implementar el backend para guardar los datos de los formularios de la página `/admin/configuracion` en la tabla `app_config`.
 *   **Seguridad de `SESSION_SECRET`:** Generar y usar una clave `SESSION_SECRET` fuerte y única en el `docker-compose.yml` para el entorno de producción.
 *   **Valores de Producción en `docker-compose.yml`:** Reemplazar todos los placeholders de variables de entorno (DB, APIs) con los valores reales de producción.
 *   **(Opcional) Eliminar `version` de `docker-compose.yml`:** Para evitar la advertencia de Docker Compose.
 *   **(Opcional) HTTPS:** Considerar un proxy inverso (Nginx, Traefik) para HTTPS si la aplicación va a manejar datos sensibles o requiere una conexión segura.
 *   **(Opcional) Funcionalidad "Loguearse con WhatsApp":** Implementar la lógica real para esta característica.
 
-## 8. Instrucciones para Continuar
+## 9. Instrucciones para Continuar
 
 *   **Desarrollo Local:**
     1.  Asegurarse de tener Node.js y npm instalados.
-    2.  Crear/actualizar el archivo `.env` con las configuraciones locales (DB, SESSION_SECRET, etc.).
-    3.  Ejecutar `npm install` para instalar dependencias.
-    4.  Ejecutar `npm run dev` (que usa Nodemon) para iniciar el servidor de desarrollo.
-    5.  Acceder a `http://localhost:3000` (o el puerto definido en `.env`).
+    2.  Configurar MySQL y crear la base de datos (ej. `dbjs`).
+    3.  Crear/actualizar el archivo `.env` con las configuraciones locales (DB_USER, DB_PASS, DB_NAME, SESSION_SECRET, etc.).
+    4.  Ejecutar `npm install` para instalar dependencias (incluyendo `knex`, `mysql2`, `bcryptjs`).
+    5.  Asegurarse de que `knexfile.js` esté eliminado o renombrado, dejando solo `knexfile.cjs`.
+    6.  Ejecutar migraciones: `npx knex migrate:latest --knexfile ./knexfile.cjs`.
+    7.  (Opcional) Ejecutar seeds: `npx knex seed:run --knexfile ./knexfile.cjs`.
+    8.  Ejecutar `npm run dev` (que usa Nodemon) para iniciar el servidor de desarrollo.
+    9.  Acceder a `http://localhost:3000` (o el puerto definido en `.env`).
 *   **Despliegue/Actualización en VPS (con Docker):**
     1.  Asegurarse de que Docker y Docker Compose estén instalados en el VPS.
     2.  Actualizar el `docker-compose.yml` en el VPS con los secretos y configuraciones de producción correctos.

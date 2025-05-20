@@ -10,7 +10,7 @@ body.dark-mode {
 }
 
 .dark-mode .sidebar {
-    background-color: #343a40;
+    background-color: #343a40 !important; /* Added !important to ensure override */
     box-shadow: inset -1px 0 0 rgba(255, 255, 255, .1);
 }
 
@@ -59,4 +59,100 @@ body.dark-mode {
 
 .dark-mode .multimedia-card .card-text {
     color: #cccccc !important; /* Added !important to override default Bootstrap styles */
+}
+
+/* Styles for the multimedia details sidebar in dark mode */
+.dark-mode .multimedia-sidebar {
+    background-color: #2c3034; /* Un color ligeramente diferente al sidebar principal para distinguirlo o usar #343a40 si se prefiere el mismo */
+    color: #ffffff; /* Texto general blanco */
+    box-shadow: -2px 0 5px rgba(255, 255, 255, 0.05); /* Sombra más clara para dark mode */
+}
+
+.dark-mode .multimedia-sidebar .sidebar-header {
+    border-bottom: 1px solid #454d55; /* Borde más claro */
+}
+
+.dark-mode .multimedia-sidebar .close-button {
+    color: #ffffff; /* Asegurar que el botón de cierre sea visible */
+}
+
+/* Ajustar el color de los enlaces no activos en el sidebar principal si es necesario */
+/* La regla existente es:
+.dark-mode .sidebar .nav-link {
+    color: #cccccc !important; 
+}
+Si #cccccc sigue siendo muy oscuro, se podría probar con #e0e0e0 o #f0f0f0
+Por ejemplo:
+.dark-mode .sidebar .nav-link:not(.active) {
+    color: #e0e0e0 !important; 
+}
+*/
+
+/* Estilos para los botones dentro del multimedia-sidebar en dark mode */
+.dark-mode .multimedia-sidebar .btn-secondary { /* Asumiendo que 'Copiar URL' es btn-secondary o similar */
+    background-color: #5a6268;
+    border-color: #545b62;
+    color: #ffffff;
+}
+
+.dark-mode .multimedia-sidebar .btn-secondary:hover {
+    background-color: #4e555b;
+    border-color: #484e53;
+}
+
+/* Styles for the user profile sidebar in dark mode */
+.dark-mode .user-sidebar {
+    background-color: #2c3034; /* Similar to multimedia-sidebar or #343a40 */
+    color: #ffffff;
+    box-shadow: -2px 0 5px rgba(255, 255, 255, 0.05);
+}
+
+/* Assuming .user-sidebar might also use .sidebar-header and .close-button */
+/* If it has its own specific classes for header and close, they would need to be styled too */
+/* For now, relying on the existing .dark-mode .sidebar-header and .dark-mode .close-button if they are reused */
+
+/* If .user-sidebar has specific text elements, they might need color adjustments */
+/* For example, if there are <p> tags or <h5> for titles: */
+.dark-mode .user-sidebar h5, /* Example for a title */
+.dark-mode .user-sidebar p,
+.dark-mode .user-sidebar div { /* General text content */
+    color: #ffffff;
+}
+
+/* Ensure the close button inside user-sidebar is also white */
+.dark-mode .user-sidebar .close-button { /* If the close button is nested directly */
+    color: #ffffff;
+}
+
+/* Dark mode styles for the new multimedia grid */
+.dark-mode .multimedia-grid-item {
+    border-color: #454d55; /* Borde más oscuro */
+    background-color: #343a40; /* Fondo de la tarjeta */
+}
+
+.dark-mode .multimedia-grid-item:hover {
+    box-shadow: 0 .125rem .25rem rgba(255,255,255,.075), 0 .5rem 1rem rgba(255,255,255,.15); /* Sombra más clara */
+}
+
+.dark-mode .multimedia-thumbnail-container {
+    background-color: #2c3034; /* Fondo oscuro si la imagen no cubre */
+}
+
+.dark-mode .multimedia-thumbnail-generic {
+    background-color: #454d55; /* Fondo para ícono genérico */
+}
+
+.dark-mode .multimedia-thumbnail-generic i {
+    color: #adb5bd; /* Color del ícono genérico */
+}
+
+.dark-mode .multimedia-filename {
+    background-color: #2c3034; /* Fondo para el nombre del archivo */
+    border-top-color: #454d55; /* Borde superior */
+    color: #cccccc; /* Color del texto del nombre del archivo */
+}
+
+.dark-mode .video-play-icon {
+    color: rgba(255, 255, 255, 0.9);
+    background-color: rgba(0, 0, 0, 0.5);
 }

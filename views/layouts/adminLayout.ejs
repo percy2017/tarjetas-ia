@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/css/admin.css">
     <link rel="stylesheet" href="/css/dark-mode.css">
     <link rel="stylesheet" type="text/css" href="/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" href="/css/sweetalert2.min.css"> <!-- SweetAlert2 CSS -->
 </head>
 <body>
     <div class="topbar">
@@ -89,6 +90,7 @@
     <script type="text/javascript" src="/js/dataTables.core.js"></script>
     <script type="text/javascript" src="/js/dataTables.dataTables.min.js"></script>
     <script src="/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/sweetalert2.all.min.js"></script> <!-- SweetAlert2 JS -->
     <script>
         const darkModeSwitch = document.getElementById('darkModeSwitch');
         const body = document.body;
@@ -114,8 +116,52 @@
         const userAvatar = document.getElementById('userAvatar');
         const userSidebar = document.getElementById('user-sidebar');
         const closeUserSidebarButton = document.getElementById('close-user-sidebar');
-        const userName = document.getElementById('user-name');
-        const userEmail = document.getElementById('user-email');
+        const userNameDisplay = document.getElementById('user-name'); // Renamed for clarity
+        const userEmailDisplay = document.getElementById('user-email'); // Renamed for clarity
+
+        // Acceder a los datos del usuario pasados desde el servidor vía res.locals.currentUser
+        // El middleware en app.js se encarga de poblar currentUser (que será null o un objeto)
+        var currentUser = null; // Inicializar por si acaso
+        try {
+            // JSON.stringify(currentUser) producirá una cadena JSON (ej. '{"name":"admin"}' o 'null')
+            // EJS lo imprimirá. Las comillas simples lo hacen una cadena JS. JSON.parse lo convierte a objeto/null.
+            currentUser = JSON.parse('<%- JSON.stringify(currentUser) %>');
+        } catch (e) {
+            console.error('Error parsing currentUser data:', e);
+            currentUser = {}; // Fallback a objeto vacío en caso de error de parseo
+        }
+        
+
+        if (userNameDisplay && currentUser && Object.keys(currentUser).length > 0) { // Verificar que currentUser no sea null y no sea un objeto vacío
+            if (currentUser.first_name || currentUser.last_name) {
+                userNameDisplay.textContent = `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim();
+            } else if (currentUser.username) {
+                userNameDisplay.textContent = currentUser.username;
+            } else {
+                userNameDisplay.textContent = 'Usuario'; // Fallback
+            }
+        }
+
+        if (userEmailDisplay && currentUser.email) {
+            userEmailDisplay.textContent = currentUser.email;
+        } else if (userEmailDisplay) {
+            userEmailDisplay.textContent = 'No disponible'; // Fallback
+        }
+        
+        // Lógica para el avatar (si se quiere mostrar la imagen del avatar_url)
+        // const userAvatarIcon = document.getElementById('userAvatar'); // Este es el SVG
+        // if (userAvatarIcon && currentUser.avatar_url) {
+        //   // Aquí podrías reemplazar el SVG con un <img> o modificar el SVG si es dinámico
+        //   // Por ejemplo, crear un img y reemplazar el userAvatarIcon:
+        //   // const imgAvatar = document.createElement('img');
+        //   // imgAvatar.src = currentUser.avatar_url;
+        //   // imgAvatar.alt = 'Avatar';
+        //   // imgAvatar.classList.add('rounded-circle'); // Mantener estilo
+        //   // imgAvatar.style.width = '30px'; imgAvatar.style.height = '30px'; // Mantener tamaño
+        //   // userAvatarIcon.parentNode.replaceChild(imgAvatar, userAvatarIcon);
+        //   // userAvatar = imgAvatar; // Reasignar para el event listener si se reemplaza
+        // }
+
 
         userAvatar.addEventListener('click', () => {
             userSidebar.classList.toggle('show');
@@ -124,15 +170,6 @@
         closeUserSidebarButton.addEventListener('click', () => {
             userSidebar.classList.remove('show');
         });
-
-        // Sample user data (replace with actual data from your application)
-        const userData = {
-            name: 'Percy Alvarez',
-            email: 'percyalvarez@gmail.com'
-        };
-
-        userName.textContent = userData.name;
-        userEmail.textContent = userData.email;
 
         // Set active class on sidebar menu
         const currentPath = window.location.pathname;

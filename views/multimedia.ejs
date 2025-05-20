@@ -1,41 +1,51 @@
 <% layout('layouts/adminLayout') %>
 
-<h2>Gestión de Multimedia</h2>
+<!-- <h2>Gestión de Multimedia</h2> -->
 
 <div class="progress" style="display: none;">
     <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
 </div>
 
 <form action="/admin/multimedia/upload" method="post" enctype="multipart/form-data" class="row g-3 align-items-center">
-    <div class="col-auto">
+    <div class="col"> <!-- Search input column - changed to col for flexible width -->
+        <input type="text" id="mediaSearchInput" class="form-control" placeholder="Buscar por nombre de archivo...">
+    </div>
+    <div class="col-auto"> <!-- File input -->
         <label for="multimediaFiles" class="form-label visually-hidden">Seleccionar archivos:</label>
         <input class="form-control" type="file" id="multimediaFiles" name="multimediaFiles" multiple>
     </div>
-    <div class="col-auto">
+    <div class="col-auto"> <!-- Submit button -->
         <button type="submit" class="btn btn-primary">Subir</button>
     </div>
 </form>
+<!-- Removed the separate div for search input as it's now in the form row -->
 
 <div id="multimedia-list" class="mt-4">
-    <!-- <h2>Archivos Subidos</h2> -->
-    <div class="row">
+    <div class="row multimedia-grid">
         <% files.forEach(function(file) { %>
-            <div class="col-md-3 mb-3">
-                <div class="card multimedia-card" data-filename="<%= file.filename %>" data-mimetype="<%= file.mimeType %>">
-                    <% if (file.mimeType.startsWith('image/')) { %>
-                        <img src="/uploads/<%= file.filename %>" class="card-img-top" alt="<%= file.filename %>">
-                    <% } else if (file.mimeType.startsWith('video/')) { %>
-                        <video controls class="card-img-top">
-                            <source src="/uploads/<%= file.filename %>" type="<%= file.mimeType %>">
-                            Your browser does not support the video tag.
-                        </video>
-                    <% } else { %>
-                        <div class="card-img-top d-flex align-items-center justify-content-center" style="height: 150px; background-color: #e9ecef;">
-                            <i class="fas fa-file fa-3x text-muted"></i>
-                        </div>
-                    <% } %>
-                    <div class="card-body">
-                        <p class="card-text"><%= file.filename %></p>
+            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-12 mb-3 multimedia-grid-item-wrapper">
+                <div class="card multimedia-card multimedia-grid-item" data-filename="<%= file.filename %>" data-mimetype="<%= file.mimeType %>">
+                    <div class="multimedia-thumbnail-container">
+                        <% if (file.mimeType.startsWith('image/')) { %>
+                            <img src="/uploads/<%= file.filename %>" class="multimedia-thumbnail" alt="<%= file.filename %>">
+                        <% } else if (file.mimeType.startsWith('video/') || file.mimeType.includes('mp4')) { %>
+                            <video class="multimedia-thumbnail" preload="metadata">
+                                <source src="/uploads/<%= file.filename %>#t=0.1" type="<%= file.mimeType.startsWith('video/') ? file.mimeType : 'video/mp4' %>">
+                                Your browser does not support the video tag.
+                            </video>
+                             <div class="video-play-icon"><i class="fas fa-play"></i></div>
+                        <% } else if (file.mimeType === 'application/pdf') { %>
+                            <div class="multimedia-thumbnail-generic d-flex align-items-center justify-content-center">
+                                <i class="fas fa-file-pdf fa-3x text-danger"></i> <!-- PDF icon, text-danger for red color -->
+                            </div>
+                        <% } else { %>
+                            <div class="multimedia-thumbnail-generic d-flex align-items-center justify-content-center">
+                                <i class="fas fa-file fa-3x text-muted"></i> <!-- Generic file icon -->
+                            </div>
+                        <% } %>
+                    </div>
+                    <div class="multimedia-filename">
+                        <small><%= file.filename %></small>
                     </div>
                 </div>
             </div>
@@ -49,7 +59,9 @@
         <button id="close-sidebar" class="close-button">&times;</button>
     </div>
     <div class="sidebar-body">
-        <img src="" alt="Vista previa" class="img-fluid mb-3" id="sidebar-preview">
+        <div id="sidebar-preview-container" class="mb-3">
+            <!-- La previsualización se insertará aquí por JS -->
+        </div>
         <p><strong>Nombre del archivo:</strong> <span id="sidebar-filename"></span></p>
         <p><strong>URL pública:</strong> <span id="sidebar-url"></span></p>
         <button class="btn btn-secondary btn-sm" id="copy-url">Copiar URL</button>
@@ -60,7 +72,7 @@
     const multimediaCards = document.querySelectorAll('.multimedia-card');
     const multimediaSidebar = document.getElementById('multimedia-sidebar');
     const closeSidebarButton = document.getElementById('close-sidebar');
-    const sidebarPreview = document.getElementById('sidebar-preview');
+    const sidebarPreviewContainer = document.getElementById('sidebar-preview-container'); // Changed ID
     const sidebarFilename = document.getElementById('sidebar-filename');
     const sidebarUrl = document.getElementById('sidebar-url');
     const copyUrlButton = document.getElementById('copy-url');
@@ -81,7 +93,7 @@
             sidebarUrl.textContent = fullUrl; // Display full URL
 
             // Clear previous preview content
-            sidebarPreview.innerHTML = '';
+            sidebarPreviewContainer.innerHTML = ''; // Clear the container
 
             let previewElement;
 
@@ -95,10 +107,22 @@
                 console.log('Creating video preview');
                 previewElement = document.createElement('video');
                 previewElement.controls = true;
-                previewElement.classList.add('img-fluid', 'mb-3'); // Use img-fluid for responsiveness
+                previewElement.preload = 'metadata'; // Added preload
+                previewElement.classList.add('img-fluid'); // mb-3 will be on the container
                 const source = document.createElement('source');
-                source.src = fileUrl;
-                source.type = mimeType;
+                source.src = fileUrl; // #t=0.1 was removed here, which is correct for playback
+                // Adjust source.type for video playback in sidebar
+                if (mimeType.startsWith('video/')) {
+                    source.type = mimeType;
+                } else if (mimeType.includes('mp4')) {
+                    source.type = 'video/mp4'; // Force video/mp4 for application/mp4
+                } else if (mimeType.includes('ogg')) {
+                    source.type = 'video/ogg';
+                } else if (mimeType.includes('webm')) {
+                    source.type = 'video/webm';
+                } else {
+                    source.type = mimeType; // Fallback
+                }
                 previewElement.appendChild(source);
             } else if (mimeType === 'application/pdf') {
                 console.log('Creating PDF preview');
@@ -115,7 +139,9 @@
                 previewElement.innerHTML = '<i class="fas fa-file fa-3x text-muted"></i>';
             }
 
-            sidebarPreview.appendChild(previewElement);
+            if (previewElement) { // Ensure previewElement was created
+                sidebarPreviewContainer.appendChild(previewElement); // Append to the container
+            }
 
             multimediaSidebar.classList.add('show');
         });
@@ -154,6 +180,26 @@
                 showConfirmButton: false,
                 timer: 2000
             });
+        });
+    });
+
+    // Script para la búsqueda de multimedia
+    const searchInput = document.getElementById('mediaSearchInput');
+    const mediaItemWrappers = document.querySelectorAll('.multimedia-grid-item-wrapper');
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+
+        mediaItemWrappers.forEach(itemWrapper => {
+            const card = itemWrapper.querySelector('.multimedia-card');
+            if (card) { // Asegurarse de que la tarjeta exista
+                const filename = card.dataset.filename.toLowerCase();
+                if (filename.includes(searchTerm)) {
+                    itemWrapper.style.display = ''; // Mostrar
+                } else {
+                    itemWrapper.style.display = 'none'; // Ocultar
+                }
+            }
         });
     });
 </script>

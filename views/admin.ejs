@@ -1,4 +1,8 @@
 <% layout('layouts/adminLayout') %>
 
 <h1>Admin Page</h1>
-<p>Welcome, <%= user %></p>
+<% if (currentUser) { %>
+  <p>Welcome, <%= currentUser.first_name || currentUser.username %></p>
+<% } else { %>
+  <p>Welcome, Guest</p>
+<% } %>
