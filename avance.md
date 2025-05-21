@@ -9,218 +9,213 @@
 *   **Backend:** Node.js, Express.js
 *   **Frontend (Vistas):** EJS (Embedded JavaScript templates) con el motor `ejs-mate` para layouts.
 *   **Estilos:** Bootstrap 5, CSS personalizado.
-*   **JavaScript Frontend:** jQuery, DataTables, SweetAlert2, Bootstrap JS, **AlpacaJS**, **Handlebars.js** (dependencia de AlpacaJS).
+*   **JavaScript Frontend:** jQuery, DataTables, SweetAlert2, Bootstrap JS, **AlpacaJS**, **Handlebars.js** (dependencia de AlpacaJS), **intl-tel-input**.
 *   **Gestión de Sesiones:** `express-session` (actualmente con `MemoryStore`).
+*   **Mensajes Flash:** `connect-flash`.
 *   **Subida de Archivos:** `multer`.
 *   **Variables de Entorno (Desarrollo):** `dotenv`.
 *   **Base de Datos:** MySQL, con gestión de esquemas y seeds mediante **Knex.js**.
 *   **Hashing de Contraseñas:** **bcryptjs**.
+*   **Generación de Contraseñas:** `generate-password`.
+*   **Envío de Correos:** `Nodemailer`.
 *   **Contenerización y Despliegue:** Docker, Docker Compose.
 
-## 3. Estado Actual del Proyecto
+## 3. Estado Actual del Proyecto (Actualizado)
 
-El proyecto cuenta con una landing page, un sistema de **login conectado a una base de datos MySQL (tabla `users`)**, y un panel de administración con varias secciones funcionales y mejoras en la interfaz de usuario. La gestión del esquema de la base de datos se realiza con **Knex.js (migraciones y seeds)**. La aplicación ha sido configurada para usar variables de entorno y se han creado los archivos necesarios para su despliegue con Docker (`Dockerfile`, `docker-compose.yml`, `.dockerignore`). La aplicación se ha desplegado exitosamente en un VPS en `http://154.38.177.115:6001/`.
+El proyecto cuenta con una landing page y un sistema de **login y registro de usuarios (roles 'admin' y 'client')**. Durante el registro, se genera automáticamente un `profile_slug` para el usuario. El panel de administración (`/admin`) es accesible por usuarios logueados, con ciertas secciones restringidas por rol.
 
-## 4. Detalle de Funcionalidades Implementadas
+Se ha implementado un **editor de menús dinámico** (`/admin/menu-editor`, accesible solo por 'admin') que permite el CRUD completo de ítems de menú. El menú lateral del panel de administración (`views/layouts/adminLayout.ejs`) ahora se genera dinámicamente basado en estos ítems y los roles del usuario actual.
+
+Se ha comenzado la implementación de la **gestión de tarjetas digitales (`cards`)**:
+*   La tabla `cards` en la base de datos incluye campos para `original_prompt` y `tokens_cost`.
+*   El flujo de creación de tarjetas se inicia desde el Previsualizador (`/admin/previsualizador`):
+    *   El usuario ingresa un prompt, la IA genera contenido (HTML, CSS, JS).
+    *   El servicio `aiService.js` parsea la respuesta de la IA (JSON o string con formato de objeto JS) de forma robusta.
+    *   La ruta `POST /admin/previsualizador` en `app.js` devuelve el contenido generado como JSON al frontend.
+    *   El frontend (`views/previsualizador.ejs` y su JS) muestra el contenido en un iframe y permite al usuario guardarlo como una nueva tarjeta.
+    *   Al guardar, se envían el título, prompt y contenido a `POST /admin/cards`.
+    *   La ruta `POST /admin/cards` (en `routes/cards.js`) crea un directorio único (`public/cards/:profile_slug/:card_slug/`), guarda los archivos HTML/CSS/JS, registra la tarjeta en la BD (con `original_prompt` y `tokens_cost` fijo en 1 por ahora), y actualiza `users.tokens_used`.
+*   Se ha creado una página `/admin/cards` para listar las tarjetas del usuario, utilizando DataTables para la visualización.
+
+**Desafíos y Soluciones Implementadas:**
+*   **Errores de Sintaxis EJS con `block('pageScripts').append()`:** Se encontraron problemas recurrentes al intentar incrustar bloques de JavaScript complejos directamente en las plantillas EJS usando `ejs-mate`. La solución más efectiva fue externalizar estos scripts a archivos `.js` separados (ej. `public/js/admin-menu-editor.js`, `public/js/admin-cards-datatable.js`) y luego enlazarlos en la plantilla con `<% block('pageScripts').append('<script src="/ruta/al/script.js"></script>') %>`. Esto evitó los errores de parseo de EJS.
+*   **Parseo de Respuesta de IA:** La respuesta de la API de Llama a veces no era un JSON estrictamente válido (contenía backticks). Se implementó una lógica de parseo más robusta en `services/aiService.js` que intenta `JSON.parse()` y, como fallback, usa expresiones regulares.
+*   **Errores 403 en Previsualizador:** Se solucionaron eliminando las etiquetas `<link rel="stylesheet" href="styles.css">` y `<script src="script.js"></script>` del HTML generado por la IA antes de inyectarlo en el iframe del previsualizador.
+*   **Gestión de Rutas y Middlewares:** Se ajustó el orden de definición de rutas en `app.js` para asegurar que las rutas específicas (ej. `/admin/previsualizador`) se manejen antes que los routers más generales (ej. `adminMenuRouter`) para evitar conflictos de middlewares de autorización.
+*   **Dependencias Faltantes:** Se instaló `fs-extra` cuando fue necesario.
+*   **Errores de Referencia:** Se corrigieron errores como `upload is not defined` y `successMessage is not defined` ajustando el orden de definición de variables o la forma de acceder a ellas.
+
+La aplicación se despliega con Docker y está accesible en un VPS.
+
+## 4. Detalle de Funcionalidades Implementadas (Actualizado)
 
 ### 4.1. Aplicación Base y Configuración (`app.js`)
 
 *   Servidor Express escuchando en un puerto configurable (default 3000, `process.env.PORT`).
 *   Motor de plantillas EJS configurado con `ejs-mate`.
-*   Servicio de archivos estáticos desde `./public`.
+*   Servicio de archivos estáticos desde `./public` (y `./node_modules` para algunas librerías de frontend si es necesario, aunque se prefiere copiar a `public/vendor`).
 *   `body-parser` para `urlencoded` form data.
 *   `express-session` configurado con `process.env.SESSION_SECRET`.
     *   **Advertencia Actual:** Usa `MemoryStore` por defecto, no recomendado para producción.
+*   Configuración de `connect-flash` para mensajes flash.
+*   Middleware global para pasar `currentUser` y mensajes flash (`successMessage`, `errorMessage`) a `res.locals`.
 *   Carga de variables de entorno desde `.env` usando `dotenv` para desarrollo.
 *   Rutas principales definidas:
     *   `/`: Landing page.
-    *   `/login`: Página de login (GET y POST).
-    *   `/logout`: Cierre de sesión.
-    *   Rutas protegidas bajo `/admin/*` usando el middleware `requireLogin`.
-    *   **Ruta `POST /admin/previsualizador`:** Ahora utiliza un servicio (`services/aiService.js`) para interactuar con la API de IA. Lee la configuración de la API (URL, Key, y Prompt del Sistema) desde la base de datos (`configs`), envía el prompt del usuario, procesa la respuesta estructurada (HTML, CSS, JS), escribe los archivos correspondientes en `public/cliente_prueba/`, y configura la sesión para mostrar la previsualización en un iframe.
-    *   **Ruta `GET /admin/previsualizador`:** Ahora intenta cargar automáticamente una previsualización existente desde `public/cliente_prueba/index.html` si está disponible y no hay una URL de previsualización en la sesión.
-    *   **Ruta `POST /admin/configuracion/secciones/crear`:** Nueva ruta para manejar la creación de nuevas secciones de configuración y la definición de sus campos desde la interfaz de usuario.
+    *   Rutas de autenticación (`/login`, `/register`, `/logout`) manejadas por `routes/auth.js`.
+    *   Rutas del editor de menú del panel (`/admin/menu-editor`) manejadas por `routes/adminMenu.js`.
+    *   Otras rutas protegidas bajo `/admin/*` usando el middleware `requireLogin`.
+*   **Ruta `POST /admin/previsualizador`:** Utiliza `services/aiService.js`. Lee config de API desde BD (`configs`), envía prompt a la IA. Devuelve el contenido generado (HTML, CSS, JS) como JSON al frontend para previsualización dinámica.
+    *   **Ruta `GET /admin/previsualizador`:** Permite iniciar la creación de una nueva tarjeta (`?action=new`) o (pendiente) cargar una tarjeta existente para editar o la última creada.
+    *   **Ruta `POST /admin/configuracion/secciones/crear`:** Creación de nuevas secciones de configuración.
+*   **Rutas para Tarjetas (`routes/cards.js` montado en `/admin/cards`):**
+    *   `GET /`: Lista las tarjetas del usuario actual (usa DataTables).
+    *   `POST /`: Crea una nueva tarjeta, guarda archivos en `public/cards/:profile_slug/:card_slug/`, registra en BD (incluyendo `original_prompt`, `tokens_cost`), y actualiza `users.tokens_used`.
 
-### 4.1.1. Servicios (`services/`)
+### 4.1.1. Servicios (`services/`) (Actualizado)
 *   **`services/aiService.js`:**
-    *   Nuevo módulo para encapsular la lógica de interacción con las APIs de modelos de lenguaje grandes (IA).
-    *   Contiene la función `generateLlamaCompletion(userPrompt)` que:
-        *   Obtiene la configuración de la API Llama (URL, API Key, y Prompt del Sistema) desde la tabla `configs` de la base de datos.
-        *   Construye y envía la solicitud a la API Llama.
-        *   Procesa la respuesta de la IA, esperando un JSON con `html_code`, `css_code`, y `js_code`.
-        *   Devuelve un objeto estructurado `{ html, css, js }` y los tokens consumidos. *(Nota: La devolución y el registro de tokens consumidos aún está pendiente de implementación completa en `app.js`)*.
+    *   Encapsula la lógica de interacción con APIs de IA (Llama).
+    *   Obtiene config de API desde la tabla `configs`.
+    *   Procesa la respuesta de la IA (que puede no ser JSON estricto) de forma robusta, intentando `JSON.parse()` y usando expresiones regulares como fallback para extraer `html_code`, `css_code`, `js_code`.
+*   **`services/notificationService.js`:**
+    *   Nuevo servicio para manejar notificaciones.
+    *   Función `sendWelcomeEmail(userData, generatedPassword)`:
+        *   Obtiene configuración SMTP de la tabla `configs` (sección `smtp_settings`).
+        *   Utiliza `Nodemailer` para enviar un correo de bienvenida al nuevo usuario con su `username` y `generatedPassword`.
+        *   Incluye manejo de errores para el envío de correo (ej. `ERR_TLS_CERT_ALTNAME_INVALID` solucionado con `rejectUnauthorized: false` para desarrollo).
 
 ### 4.2. Vistas y Frontend
 
-*   **`views/index.ejs` (Landing Page):**
-    *   Diseño responsivo con Bootstrap.
-    *   Secciones: Carrusel, Sobre Nosotros, Beneficios, Precios (placeholders), FAQ (acordeón).
-    *   Barra de navegación con logo SVG inline y enlaces a secciones y login.
-    *   Favicon SVG inline.
+*   **`views/index.ejs` (Landing Page):** Sin cambios recientes significativos.
 *   **`views/login.ejs`:**
-    *   Diseño personalizado (`public/css/login.css`) inspirado en WordPress.
-    *   Logo SVG inline.
-    *   Formulario de login (usuario, contraseña).
-    *   Botón "Loguearse con WhatsApp" (visual, sin funcionalidad).
-    *   Enlace para volver a la landing page.
-    *   Favicon SVG inline.
-*   **`views/layouts/adminLayout.ejs` (Layout del Panel de Admin):**
-    *   Estructura base para todas las páginas del admin.
-    *   Barra superior con nombre del proyecto, breadcrumbs, switch de Dark Mode, avatar de usuario (placeholder) y botón de Salir.
-    *   Barra lateral de navegación con enlaces a: Panel, Ventas, Previsualizador, Multimedia, Configuración.
-    *   Carga de CSS comunes en el `<head>`: Bootstrap, `admin.css`, `dark-mode.css`, `dataTables.dataTables.min.css`, y **`alpaca.min.css` (para AlpacaJS, servido localmente desde `public/css/`)**.
-    *   Utiliza `<%- block('pageStyles') %>` en el `<head>` para permitir a las vistas hijas inyectar CSS adicional específico.
-    *   Carga de JS comunes al final del `<body>` (antes del bloque de scripts de página): `jquery.min.js`, `dataTables.core.js`, `dataTables.dataTables.min.js`, `bootstrap.bundle.min.js`, `sweetalert2.all.min.js`, **`handlebars.min.js` (CDN, dependencia de AlpacaJS)**, y **`alpaca.min.js` (para AlpacaJS, servido localmente desde `public/js/`)**. También incluye scripts para Dark Mode y lógica de la sidebar de perfil de usuario.
-    *   Utiliza `<%- block('pageScripts') %>` al final del `<body>` para permitir a las vistas hijas inyectar JavaScript adicional específico.
-    *   Favicon SVG inline.
-    *   **Sidebar de Perfil de Usuario:** Ahora muestra información más completa del usuario en sesión, incluyendo: imagen de avatar (si `avatar_url` existe), nombre de usuario, nombre completo, correo, teléfono, rol, **tokens usados**, URL del perfil (basada en `profile_slug`), y fecha de registro ("Miembro desde").
-*   **`views/admin.ejs` (Dashboard Admin):**
-    *   Página de bienvenida **ahora muestra el nombre del usuario en sesión.**
-*   **`views/previsualizador.ejs`:**
-    *   Formulario para ingresar un "prompt" para la IA.
-    *   **Muestra la página web generada por la IA dentro de un `<iframe>`**.
-    *   Al cargar la página, intenta mostrar automáticamente la última previsualización generada si los archivos existen en `public/cliente_prueba/`.
-    *   Muestra mensajes de éxito o error relacionados con la generación de la previsualización.
-    *   La generación de archivos (`index.html`, `styles.css`, `script.js`) en `public/cliente_prueba/` se basa en la respuesta estructurada (HTML, CSS, JS) obtenida de la API de IA.
-*   **`views/multimedia.ejs`:**
-    *   Formulario para subir múltiples archivos usando `multer` (guardados en `public/uploads/`). **Controles de subida, búsqueda y botón ahora en una sola fila.**
-    *   Muestra los archivos subidos con previsualizaciones en una **cuadrícula rediseñada estilo WordPress (miniaturas cuadradas y uniformes)**.
-    *   **Mejoras en previsualizaciones:** Icono específico para PDF en la grilla, previsualización de video funcional en el sidebar.
-    *   **Búsqueda de multimedia del lado del cliente implementada.**
-    *   Barra lateral de detalles que aparece al hacer clic en un archivo, mostrando nombre, URL pública y botón para copiar URL (usa SweetAlert2 para notificaciones). **Ajustes de modo oscuro y altura del sidebar de detalles implementados.**
-*   **`views/ventas.ejs`:**
-    *   Muestra datos de ventas desde `public/data/ventas.json`.
-    *   Utiliza DataTables para una tabla interactiva (paginación, búsqueda, ordenamiento).
-    *   El script de inicialización de DataTables se carga mediante el bloque `pageScripts` del layout, usando la sintaxis `block().append()`.
+    *   Añadido enlace "Regístrate aquí" a `/register`.
+*   **`views/register.ejs` (Nueva Vista):**
+    *   Formulario de registro solicitando Nombres, Apellidos, Correo Electrónico y Teléfono.
+    *   Integración de `intl-tel-input` para el campo de teléfono, con archivos servidos desde `public/vendor/intl-tel-input/`.
+*   **`views/layouts/adminLayout.ejs`:**
+    *   El breadcrumb espera la variable `currentPage`.
+    *   Muestra mensajes flash (`successMessage`, `errorMessage`) obtenidos de `res.locals`.
+*   **`views/admin.ejs` (Dashboard Admin):** Sin cambios recientes significativos.
+*   **`views/layouts/adminLayout.ejs` (Actualizado):**
+    *   El menú lateral se genera dinámicamente a partir de `res.locals.adminMenuItems` (cargados en `app.js` desde la BD y filtrados por rol).
+    *   Incluye Font Awesome globalmente.
+*   **`views/admin.ejs` (Dashboard Admin):** Sin cambios recientes significativos.
+*   **`views/previsualizador.ejs` (Actualizado):**
+    *   Maneja la respuesta JSON de la IA para actualizar el iframe dinámicamente.
+    *   Incluye botón "Guardar Tarjeta" y modal para ingresar título.
+    *   Envía datos (título, prompt, HTML, CSS, JS) a `POST /admin/cards`.
+    *   Limpia el HTML de la IA de enlaces a `styles.css` y `script.js` para evitar errores 403 en iframe.
+    *   Maneja el query param `?action=new`.
+*   **`views/multimedia.ejs`:** Sin cambios recientes significativos.
+*   **`views/ventas.ejs`:** Sin cambios recientes significativos.
 *   **`views/configuracion.ejs`:**
-    *   **Página de configuración dinámica renderizada a partir de datos de la tabla `configs` de la base de datos.**
-    *   Muestra un acordeón de Bootstrap donde cada ítem representa una sección de configuración (ej: Modelo IA, Socket.IO, Evolution API).
-    *   **Los formularios dentro de cada sección se generan dinámicamente usando la librería AlpacaJS.** La estructura de cada formulario (campos, etiquetas, tipos de input) se define en una columna JSON (`fields_config_json`) en la tabla `configs`.
-    *   Los valores actuales de configuración se cargan desde la base de datos y se muestran en los formularios.
-    *   Permite guardar los cambios, que se persisten actualizando los valores en la columna `fields_config_json` de la tabla `configs`.
-    *   **Incluye un modal para "Añadir Nueva Sección", permitiendo al administrador definir dinámicamente nuevas secciones de configuración y los campos (clave, etiqueta, tipo, etc.) que contendrán.** Esta estructura se guarda en `fields_config_json`.
-    *   La lógica de inicialización de AlpacaJS y la carga de datos para los formularios, así como la gestión del modal, se maneja en un script específico de la página, inyectado mediante `<% block('pageScripts').append(\`...\`) %>`.
-    *   El CSS específico de AlpacaJS se carga globalmente a través del layout.
+    *   Corregido error de AlpacaJS con campos de tipo `boolean`.
+*   **`views/admin/menu-editor.ejs` (Solucionado y Funcional):**
+    *   Error EJS resuelto externalizando el script a `public/js/admin-menu-editor.js`.
+    *   CRUD completo para ítems de menú implementado (Añadir, Editar, Eliminar).
+*   **`views/admin/cards.ejs` (Nueva Vista):**
+    *   Lista las tarjetas del usuario utilizando DataTables.
+    *   Botón "+ Crear Nueva Tarjeta con IA" enlaza a `/admin/previsualizador?action=new`.
+    *   (Pendiente: Ajustar visualización de "Ruta Archivos" y enlace "Ver").
 
-### 4.3. Autenticación (`routes/auth.js`)
+### 4.3. Autenticación (`routes/auth.js`) (Actualizado)
 
-*   Ruta GET `/login`: Renderiza `login.ejs`. Redirige a `/admin` si ya está logueado.
-*   Ruta POST `/login`: Valida credenciales contra la tabla `users`. Compara contraseñas hasheadas con `bcryptjs`. Establece `req.session.loggedIn = true` y `req.session.user`. **El objeto `req.session.user` ahora incluye `id, username, email, first_name, last_name, phone, avatar_url, role, tokens_used, profile_slug, created_at`.** Solo permite acceso a `/admin` si el rol es 'admin'.
-*   Ruta GET `/logout`: Destruye la sesión y redirige a `/login`.
+*   **Ruta `POST /register`:**
+    *   Genera y guarda un `profile_slug` único para el nuevo usuario.
+    *   Genera automáticamente un `username` único.
+    *   Genera automáticamente una `password` segura usando `generate-password`.
+    *   Hashea la contraseña con `bcryptjs`.
+    *   Crea el nuevo usuario en la tabla `users` con `role: 'client'`.
+    *   Llama a `sendWelcomeEmail` de `notificationService.js` para enviar las credenciales al usuario.
+    *   Redirige a `/login` con mensaje de éxito.
+*   **Ruta `POST /login`:**
+    *   Modificada para que tanto usuarios con rol `'admin'` como `'client'` sean redirigidos a `/admin` tras un inicio de sesión exitoso.
+*   Ruta GET `/login` y GET `/logout`: Sin cambios funcionales mayores.
 
 ### 4.4. Middleware y Configuración Adicional en `app.js`
-*   Middleware para pasar `req.session.user` a `res.locals.currentUser`, haciéndolo disponible globalmente en las plantillas EJS.
+*   Middleware global para `currentUser`, mensajes flash y `adminMenuItems` (menú dinámico).
+*   Añadido `express.json()` para parsear JSON bodies.
+*   Reorganización del orden de rutas para priorizar rutas específicas sobre routers generales.
 
-## 5. Configuración de Base de Datos (Knex.js)
-*   **`knexfile.cjs`:** Archivo de configuración de Knex para entornos de desarrollo y producción, especificando cliente `mysql2`, detalles de conexión y directorios para migraciones y seeds. Adaptado para funcionar en un proyecto con `"type": "module"` usando la extensión `.cjs`.
-*   **`db.cjs`:** Módulo para centralizar la inicialización y exportación de la instancia de Knex para ser usada en la aplicación.
+### 4.5. Gestión de Menú del Panel (Completado para CRUD básico)
+*   **Rutas (`routes/adminMenu.js`):**
+    *   CRUD completo para ítems de menú (GET, POST para crear, GET para obtener datos para editar, PUT para actualizar, DELETE).
+    *   Middleware `requireAdminRole` para restringir acceso.
+*   **Vista (`views/admin/menu-editor.ejs`):**
+    *   Interfaz para listar, añadir, editar y eliminar ítems de menú, con JavaScript externalizado a `public/js/admin-menu-editor.js`.
+
+### 4.6. Gestión de Tarjetas (En Desarrollo)
+*   **Rutas (`routes/cards.js`):**
+    *   `GET /`: Lista las tarjetas del usuario.
+    *   `POST /`: Crea una nueva tarjeta:
+        *   Recibe título, prompt, HTML, CSS, JS.
+        *   Crea directorio `public/cards/:profile_slug/:card_slug/`.
+        *   Guarda archivos.
+        *   Inserta en BD (con `original_prompt`, `tokens_cost`).
+        *   Actualiza `users.tokens_used`.
+        *   Devuelve respuesta JSON.
+*   **Vista (`views/admin/cards.ejs`):**
+    *   Muestra tarjetas en DataTables.
+    *   Enlaza a previsualizador para crear nuevas.
+*   **Migración (`...create_cards_table.cjs`):**
+    *   Actualizada para incluir `original_prompt` y `tokens_cost`.
+
+## 5. Configuración de Base de Datos (Knex.js) (Actualizado)
 *   **Migraciones (`db/migrations/`):**
-    *   `YYYYMMDDHHMMSS_create_users_table.cjs`: Define el esquema para la tabla `users`. **Actualizada para incluir `tokens_used` (INTEGER, default 0, para rastrear consumo de IA) y `profile_slug` (VARCHAR, unique, nullable, para URL de perfil de usuario).**
-    *   `YYYYMMDDHHMMSS_create_configs_table.cjs`: Define el esquema para la tabla `configs` (almacena definición y valores de configuraciones dinámicas).
-    *   **`YYYYMMDDHHMMSS_create_cards_table.cjs`:** Define el esquema para la nueva tabla `cards` para permitir múltiples tarjetas por usuario. Incluye `id`, `user_id` (FK a `users`), `title`, `slug` (único para la URL de la tarjeta), `status` (enum: draft, published, etc.), `content_json` (para el contenido de la tarjeta), `is_default` (boolean), y `timestamps`.
-*   **Seeds (`db/seeds/`):**
-    *   `01_create_admin_user.cjs`: Script para poblar la tabla `users` con un usuario administrador inicial (ahora incluye valores por defecto para `tokens_used` y `profile_slug` si la migración los define así).
-    *   **`02_populate_initial_configs.cjs`:** **Eliminado.** Las configuraciones iniciales y la estructura de sus campos ahora se gestionan dinámicamente desde la interfaz de usuario de `/admin/configuracion`.
+    *   `..._create_users_table.cjs` (asume `profile_slug`).
+    *   `..._create_configs_table.cjs`
+    *   `..._create_cards_table.cjs` (actualizada con `original_prompt`, `tokens_cost`).
+    *   `..._create_admin_menu_items_table.cjs`
 
-## 6. Estructura de Archivos Clave
-
-*   `app.js`: Archivo principal del servidor Express.
-*   `.env`: Variables de entorno para desarrollo.
-*   `Dockerfile`: Instrucciones para construir la imagen Docker.
-*   `.dockerignore`: Archivos a ignorar al construir la imagen Docker.
-*   `docker-compose.yml`: Define el servicio Docker para la aplicación.
-*   `package.json`: Dependencias y scripts del proyecto.
-*   `public/`: Carpeta para archivos estáticos.
-    *   `css/`: Hojas de estilo (Bootstrap, admin, login, dark-mode, DataTables, SweetAlert2).
-    *   `js/`: Scripts de frontend (jQuery, DataTables, SweetAlert2, Bootstrap).
-    *   `images/`: Imágenes (avatar.svg, favicon.svg).
-    *   `uploads/`: Carpeta para archivos subidos por el usuario (persistida con volumen en Docker).
-    *   `data/`: Datos de prueba (ventas.json).
-*   `routes/`: Archivos de rutas (auth.js).
-*   `views/`: Plantillas EJS.
-    *   `layouts/adminLayout.ejs`: Layout principal del panel de administración.
-    *   Otras vistas para cada página.
+## 6. Estructura de Archivos Clave (Actualizado)
+*   `app.js`: Archivo principal.
+*   `routes/auth.js`: Manejo de autenticación y registro (con generación de `profile_slug`).
+*   `routes/adminMenu.js`: CRUD para ítems de menú.
+*   `routes/cards.js`: (Nuevo) Gestión de tarjetas.
+*   `services/aiService.js`: Interacción con IA, parseo robusto de respuesta.
+*   `services/notificationService.js`: Envío de correos.
+*   `views/layouts/adminLayout.ejs`: Layout principal con menú dinámico.
+*   `views/admin/menu-editor.ejs`: Interfaz del editor de menús.
+*   `views/admin/cards.ejs`: (Nueva) Interfaz para listar tarjetas.
+*   `views/previsualizador.ejs`: Interfaz para generar y previsualizar contenido de IA, y para iniciar el guardado de tarjetas.
+*   `public/js/admin-menu-editor.js`: JS para el editor de menús.
+*   `public/js/admin-cards-datatable.js`: JS para DataTables en la lista de tarjetas.
+*   `public/js/admin-previsualizador.js`: (Asumido, o el script está en `previsualizador.ejs`) JS para el previsualizador.
 
 ## 7. Configuración de Despliegue (Docker)
+*   Considerar añadir `fs-extra` a `package.json` si no está, y otras nuevas dependencias.
 
-*   **`Dockerfile`:**
-    *   Base: `node:18-alpine`.
-    *   Copia `package*.json`, instala dependencias de producción.
-    *   Copia el resto de la aplicación.
-    *   Expone el puerto 3000.
-    *   Comando de inicio: `node app.js`.
-*   **`.dockerignore`:**
-    *   Excluye `node_modules`, `.git`, `.env`, archivos Docker, logs, etc.
-*   **`docker-compose.yml`:**
-    *   Servicio `app`.
-    *   Construye desde el `Dockerfile` local.
-    *   Mapeo de puertos: `6000:3000` (host:contenedor).
-    *   Volumen: `./public/uploads:/usr/src/app/public/uploads` para persistir archivos subidos.
-    *   `restart: always`.
-    *   Variables de entorno para producción:
-        *   `NODE_ENV=production`
-        *   `PORT=3000` (interno al contenedor)
-        *   `SESSION_SECRET`: Placeholder, **NECESITA SER CAMBIADO POR UNA CLAVE SEGURA EN PRODUCCIÓN.**
-        *   Placeholders para `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`.
-        *   Comentarios para futuras variables de IA, Sockets, Evolution API.
+## 8. Puntos Pendientes y Próximas Mejoras (Revisado y Re-priorizado)
 
-## 7. Puntos Pendientes y Próximas Mejoras (Identificados)
+**Prioridad Alta:**
+*   **Tokens de IA:**
+    *   Investigar si la API de Llama puede devolver el costo real de tokens por llamada.
+        *   Si es así: Modificar `aiService.js` para capturarlo, `app.js` (ruta POST previsualizador) para pasarlo al frontend, `previsualizador.ejs` (JS) para enviarlo al guardar tarjeta, y `routes/cards.js` para guardarlo en `cards.tokens_cost` y usarlo para actualizar `users.tokens_used`.
+*   **Previsualizador - Carga y Edición:**
+    *   Implementar la carga de la última tarjeta creada por el usuario al acceder directamente a `/admin/previsualizador`.
+    *   Implementar la carga de una tarjeta existente para edición (ej. `/admin/previsualizador?editCardId=:cardId`), incluyendo poblar el prompt y el contenido en los campos/iframe. Esto requerirá una ruta `GET /admin/cards/:id/content` o similar para obtener el HTML/CSS/JS de los archivos.
+*   **Gestión de Tarjetas (`/admin/cards`):**
+    *   Ajustar la columna "Ruta Archivos" y el enlace "Ver" en la tabla de `views/admin/cards.ejs` para construir la URL dinámicamente (usando `currentUser.profile_slug` y `card.slug`).
+    *   Implementar funcionalidad completa de **Editar Tarjeta** (ruta `GET /admin/cards/:id/edit` para un formulario, ruta `PUT /admin/cards/:id` para actualizar datos y archivos).
+    *   Implementar funcionalidad de **Eliminar Tarjeta** (ruta `DELETE /admin/cards/:id`, con confirmación robusta usando SweetAlert2 en el frontend).
 
-*   **Almacén de Sesiones Persistente:** Reemplazar `MemoryStore` por defecto de `express-session` con una solución como `connect-redis` o una basada en MySQL (ej. `connect-session-knex`) para producción.
-*   **Conexión a Base de Datos MySQL:** **Realizado parcialmente.**
-    *   Driver `mysql2` instalado.
-    *   Lógica de conexión implementada mediante `knexfile.cjs` y `db.cjs`.
-    *   Tabla `users` creada mediante migración Knex.
-*   **Autenticación con Base de Datos:** **Realizado.** Lógica de login modificada para usar la tabla `users` y `bcryptjs`.
-*   **Crear Migraciones para Tablas Restantes:**
-    *   Definir y crear migraciones para `media_files` (para metadatos de archivos subidos).
-    *   ~~Definir y crear migraciones para `app_config`~~ **(Realizado, ahora es tabla `configs`)**.
-*   **Integrar `media_files` con Sección Multimedia:**
-    *   Guardar metadatos en `media_files` al subir archivos.
-    *   Leer de `media_files` para mostrar la galería y detalles.
-*   **Funcionalidad de Guardado en Configuración:** **Realizado y Mejorado.** El backend guarda los datos de los formularios de `/admin/configuracion` en la tabla `configs`. La UI ahora permite crear nuevas secciones de configuración y definir sus campos dinámicamente.
-*   **Previsualizador de IA:**
-    *   Integrado con API Llama (configurable).
-    *   Genera archivos HTML, CSS, JS.
-    *   Muestra previsualización en iframe.
-    *   Utiliza prompt de sistema configurable desde la BD.
-*   **Seguridad de `SESSION_SECRET`:** Generar y usar una clave `SESSION_SECRET` fuerte y única en el `docker-compose.yml` para el entorno de producción.
-*   **Valores de Producción en `docker-compose.yml`:** Reemplazar todos los placeholders de variables de entorno (DB, APIs) con los valores reales de producción.
-*   **(Opcional) Eliminar `version` de `docker-compose.yml`:** Para evitar la advertencia de Docker Compose.
-    *   **(Opcional) HTTPS:** Considerar un proxy inverso (Nginx, Traefik) para HTTPS si la aplicación va a manejar datos sensibles o requiere una conexión segura.
-    *   **(Opcional) Funcionalidad "Loguearse con WhatsApp":** Implementar la lógica real para esta característica.
-    *   **Implementar lógica para actualizar `users.tokens_used`** después de cada llamada exitosa a la API de IA que consuma tokens.
-    *   **Desarrollar la funcionalidad completa para la gestión de múltiples `cards` por usuario:** CRUD para tarjetas (crear, leer, actualizar, eliminar, cambiar estado), listado de tarjetas del usuario, etc.
-    *   **Implementar las rutas públicas y la lógica para mostrar las tarjetas publicadas** usando `cards.slug`.
-    *   **Implementar las rutas públicas y la lógica para los perfiles de usuario** usando `users.profile_slug` (que podría listar las tarjetas publicadas del usuario o mostrar una tarjeta por defecto).
-    *   **Resolver error 404 para `placeholder.jpg`** en el previsualizador (añadir imagen o usar servicio de placeholder).
-    *   **Considerar el uso de carpetas únicas para cada previsualización generada** en lugar de sobrescribir `public/cliente_prueba/`.
+**Prioridad Media:**
+*   **Visualización Pública de Tarjetas:**
+    *   Crear ruta pública (ej. `GET /cards/:profile_slug/:card_slug` o `/:profile_slug/:card_slug`) que sirva el `index.html` de la tarjeta correspondiente.
+*   **(Opcional) Reordenamiento de Ítems de Menú:** Implementar drag & drop.
 
-## 9. Instrucciones para Continuar
+**Prioridad Baja / Mantenimiento:**
+*   **Almacén de Sesiones Persistente:** Reemplazar `MemoryStore`.
+*   **Crear Migraciones para Tablas Restantes:** `media_files` (si se decide usar).
+*   **Integrar `media_files` con Sección Multimedia.**
+*   **Resolver error 404 para `placeholder.jpg`** en previsualizador (si aún persiste o es relevante).
+*   **Seguridad de `SESSION_SECRET` y valores de producción en `docker-compose.yml`.**
+*   **(Opcional) Funcionalidad "Loguearse con WhatsApp".**
+*   **(Opcional) HTTPS.**
+*   Revisar `DeprecationWarning: The \`util.isArray\` API is deprecated`.
 
-*   **Desarrollo Local:**
-    1.  Asegurarse de tener Node.js y npm instalados.
-    2.  Configurar MySQL y crear la base de datos (ej. `dbjs`).
-    3.  Crear/actualizar el archivo `.env` con las configuraciones locales (DB_USER, DB_PASS, DB_NAME, SESSION_SECRET, etc.).
-    4.  Ejecutar `npm install` para instalar dependencias (incluyendo `knex`, `mysql2`, `bcryptjs`).
-    5.  Asegurarse de que `knexfile.js` esté eliminado o renombrado, dejando solo `knexfile.cjs`.
-    6.  Ejecutar migraciones: `npx knex migrate:latest --knexfile ./knexfile.cjs`.
-    7.  (Opcional) Ejecutar seeds: `npx knex seed:run --knexfile ./knexfile.cjs`.
-    8.  Ejecutar `npm run dev` (que usa Nodemon) para iniciar el servidor de desarrollo.
-    9.  Acceder a `http://localhost:3000` (o el puerto definido en `.env`).
-*   **Despliegue/Actualización en VPS (con Docker):**
-    1.  Asegurarse de que Docker y Docker Compose estén instalados en el VPS.
-    2.  **Configurar la Base de Datos en el VPS:** Asegurarse de que la base de datos MySQL esté creada y accesible para la aplicación.
-    3.  Actualizar el `docker-compose.yml` en el VPS con los secretos y configuraciones de producción correctos (credenciales de la base de datos, `SESSION_SECRET`, etc.).
-    4.  Transferir los archivos actualizados del proyecto al VPS (excluyendo `node_modules` y `.env`).
-    5.  **Ejecutar Migraciones y Seeds en el VPS (Importante para la primera vez o después de cambios de esquema):**
-        *   Conectarse al VPS.
-        *   Navegar al directorio del proyecto.
-        *   Asegurarse de que las dependencias estén instaladas (si no se construyen en la imagen Docker, o si se necesita Knex CLI globalmente): `npm install` (o `npm ci --only=production` si es adecuado).
-        *   Ejecutar migraciones: `npx knex migrate:latest --knexfile ./knexfile.cjs --env production` (asumiendo que tienes una configuración de `production` en `knexfile.cjs` que apunta a la BD del VPS).
-        *   Ejecutar seeds (solo el seed del usuario admin, ya que el de configs fue eliminado): `npx knex seed:run --knexfile ./knexfile.cjs --env production`.
-    6.  **Construir y Ejecutar Contenedores Docker:**
-        *   Desde el directorio del proyecto en el VPS, ejecutar: `sudo docker compose down && sudo docker compose up --build -d` (el `down` es para detener y remover contenedores anteriores si existen).
-    7.  Acceder a la aplicación a través de `http://IP_DEL_VPS:6000`.
+## 9. Problema Histórico con `block('pageScripts').append()` (Solucionado)
+
+Durante el desarrollo, se encontraron errores recurrentes de sintaxis EJS (como `SyntaxError: Invalid or unexpected token` o `missing ) after argument list`) al intentar utilizar `block('pageScripts').append()` de `ejs-mate` para incrustar bloques de JavaScript que contenían sus propias comillas, backticks, o múltiples líneas. Aunque se intentaron varias formas de escapar o formatear el string, la solución más estable y robusta fue **externalizar dichos scripts de JavaScript a archivos `.js` separados** (ubicados en `public/js/`). Luego, estos archivos se enlazaron en las plantillas EJS correspondientes usando una forma simple de `append()` que solo incluye la etiqueta script, por ejemplo: `<% block('pageScripts').append('<script src="/js/nombre-del-script.js"></script>') %>`. Este enfoque eliminó los problemas de parseo por parte de EJS.
 
 Este prompt debería proporcionar un contexto completo del estado actual del proyecto TarjetasIA.

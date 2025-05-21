@@ -1,0 +1,143 @@
+<%- layout('layouts/adminLayout') %>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><%= title %></h2>
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addMenuItemModal">
+            + Añadir Nuevo Ítem de Menú
+        </button>
+    </div>
+
+    <% if (successMessage) { %>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <%= successMessage %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <% } %>
+    <% if (errorMessage) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <%= errorMessage %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <% } %>
+
+    <div class="card">
+        <div class="card-header">
+            Lista de Ítems del Menú
+        </div>
+        <div class="card-body">
+            <% if (menuItems && menuItems.length > 0) { %>
+                <ul id="menuItemsList" class="list-group">
+                    <% menuItems.forEach(function(item) { %>
+                        <li class="list-group-item d-flex justify-content-between align-items-center" data-id="<%= item.id %>">
+                            <div>
+                                <i class="<%= item.icon_class || 'fas fa-bars' %> me-2"></i>
+                                <strong><%= item.title %></strong> <small class="text-muted">(Ruta: <%= item.path %>, Orden: <%= item.display_order %>)</small>
+                                <br>
+                                <small class="text-muted">Roles: <%= Array.isArray(item.roles) ? item.roles.join(', ') : item.roles %></small>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-primary me-1 edit-item-btn" data-id="<%= item.id %>" data-bs-toggle="modal" data-bs-target="#editMenuItemModal">Editar</button>
+                                <button class="btn btn-sm btn-danger delete-item-btn" data-id="<%= item.id %>">Eliminar</button>
+                            </div>
+                        </li>
+                    <% }); %>
+                </ul>
+            <% } else { %>
+                <p>No hay ítems de menú definidos. ¡Añade el primero!</p>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Añadir/Editar Ítem de Menú (esqueleto básico) -->
+<!-- Añadir Ítem Modal -->
+<div class="modal fade" id="addMenuItemModal" tabindex="-1" aria-labelledby="addMenuItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="addMenuItemForm" method="POST" action="/admin/menu-editor/items">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addMenuItemModalLabel">Añadir Nuevo Ítem de Menú</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="addItemTitle" class="form-label">Título del Menú</label>
+                        <input type="text" class="form-control" id="addItemTitle" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="addItemPath" class="form-label">Ruta (Path)</label>
+                        <input type="text" class="form-control" id="addItemPath" name="path" required placeholder="/admin/pagina">
+                    </div>
+                    <div class="mb-3">
+                        <label for="addItemRoles" class="form-label">Roles Permitidos (separados por coma)</label>
+                        <input type="text" class="form-control" id="addItemRoles" name="roles" placeholder="admin,client">
+                    </div>
+                    <div class="mb-3">
+                        <label for="addItemOrder" class="form-label">Orden de Visualización</label>
+                        <input type="number" class="form-control" id="addItemOrder" name="display_order" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="addItemIcon" class="form-label">Clase del Icono (ej: fas fa-home)</label>
+                        <input type="text" class="form-control" id="addItemIcon" name="icon_class" placeholder="fas fa-link">
+                    </div>
+                     <div class="mb-3">
+                        <label for="addItemParentId" class="form-label">ID del Padre (para submenús, opcional)</label>
+                        <input type="number" class="form-control" id="addItemParentId" name="parent_id" placeholder="Dejar vacío si es principal">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Ítem</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Editar Ítem de Menú (similar al de añadir, se llenará con JS) -->
+<div class="modal fade" id="editMenuItemModal" tabindex="-1" aria-labelledby="editMenuItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="editMenuItemForm" method="POST"> <!-- Action se establecerá con JS -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editMenuItemModalLabel">Editar Ítem de Menú</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editItemId" name="itemId">
+                    <div class="mb-3">
+                        <label for="editItemTitle" class="form-label">Título del Menú</label>
+                        <input type="text" class="form-control" id="editItemTitle" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editItemPath" class="form-label">Ruta (Path)</label>
+                        <input type="text" class="form-control" id="editItemPath" name="path" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editItemRoles" class="form-label">Roles Permitidos (separados por coma)</label>
+                        <input type="text" class="form-control" id="editItemRoles" name="roles">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editItemOrder" class="form-label">Orden de Visualización</label>
+                        <input type="number" class="form-control" id="editItemOrder" name="display_order">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editItemIcon" class="form-label">Clase del Icono</label>
+                        <input type="text" class="form-control" id="editItemIcon" name="icon_class">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editItemParentId" class="form-label">ID del Padre</label>
+                        <input type="number" class="form-control" id="editItemParentId" name="parent_id">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Actualizar Ítem</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<% block('pageScripts').append('<script src="/js/admin-menu-editor.js"></script>') %>

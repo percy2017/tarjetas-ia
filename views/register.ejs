@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,<svg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><rect width='100' height='100' rx='15' fill='%232271b1'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='40' fill='%23ffffff'>TIA</text></svg>" type="image/svg+xml">
+    <title>Registro - TarjetasIA</title>
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/login.css"> <!-- Reutilizamos el CSS de login -->
+    <link rel="stylesheet" href="/vendor/intl-tel-input/css/intlTelInput.css">
+    <style>
+        .iti { width: 100%; } /* Para que intl-tel-input ocupe todo el ancho */
+    </style>
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-logo">
+            <svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100" height="100" rx="15" fill="#2271b1"/>
+                <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family='Arial, sans-serif' font-size='40' fill="#ffffff">TIA</text>
+            </svg>
+        </div>
+        <h2 class="text-center mb-4">Crear una cuenta</h2>
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-danger" role="alert">
+                <%= error %>
+            </div>
+        <% } %>
+        <form action="/register" method="post" class="login-form">
+            <div class="mb-3">
+                <label for="first_name" class="form-label">Nombres</label>
+                <input type="text" class="form-control" id="first_name" name="first_name" required>
+            </div>
+            <div class="mb-3">
+                <label for="last_name" class="form-label">Apellidos</label>
+                <input type="text" class="form-control" id="last_name" name="last_name" required>
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Correo electrónico</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+            <div class="mb-3">
+                <label for="phone" class="form-label">Teléfono</label>
+                <input type="tel" class="form-control" id="phone" name="phone" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Registrarse</button>
+        </form>
+        <div class="login-links mt-3">
+            <a href="/login">&larr; Volver al Login</a>
+        </div>
+    </div>
+    <script src="/js/jquery.min.js"></script> <!-- jQuery es dependencia de intl-tel-input si se usa su wrapper -->
+    <script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const phoneInputField = document.querySelector("#phone");
+        let phoneInput = null; 
+
+        if (phoneInputField) {
+            phoneInput = window.intlTelInput(phoneInputField, { 
+                // Asignar a la variable phoneInput
+                loadUtils: () => import("/vendor/intl-tel-input/js/utils.js"),
+                initialCountry: "auto",
+                geoIpLookup: callback => {
+                    fetch("https://ipapi.co/json")
+                    .then(res => res.json())
+                    .then(data => callback(data.country_code))
+                    .catch(() => callback("bo")); // Fallback a Bolivia o el país que prefieras
+                },
+                nationalMode: false, 
+                formatOnDisplay: true,
+                separateDialCode: true 
+            });
+            console.log('intlTelInput instance (DOM ready, loadUtils):', phoneInput);
+        } else {
+            console.error('Input field #phone not found (DOM ready)');
+        }
+
+        const loginForm = document.querySelector(".login-form");
+        // Asegurarse de que phoneInput no sea null antes de añadir el listener
+        if (loginForm && phoneInput) { 
+            loginForm.addEventListener("submit", function(event) {
+                const number = phoneInput.getNumber(); 
+                const isValid = phoneInput.isValidNumber();
+                
+                console.log('Número obtenido (loadUtils):', number);
+                console.log('Es válido (loadUtils)?:', isValid);
+
+                if (isValid) {
+                    phoneInputField.value = number;
+                } else {
+                    console.log('El número no es válido (loadUtils).');
+                    event.preventDefault(); 
+                    alert('El número de teléfono ingresado no es válido o está incompleto. Por favor, verifícalo.');
+                    return;
+                }
+            });
+        } else {
+            if (!loginForm) console.error('Form .login-form not found (DOM ready)');
+            // Este log es más probable si phoneInput sigue siendo null
+            if (!phoneInput) console.error('phoneInput instance is null, event listener for submit not added.');
+        }
+    });
+    </script>
+</body>
+</html>

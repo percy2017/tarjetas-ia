@@ -9,6 +9,7 @@
     <link rel="stylesheet" type="text/css" href="/css/dataTables.dataTables.min.css">
     <link rel="stylesheet" href="/css/sweetalert2.min.css"> <!-- SweetAlert2 CSS -->
     <link href="/css/alpaca.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> <!-- Font Awesome -->
     <%- block('pageStyles') %>
 </head>
 <body>
@@ -59,36 +60,33 @@
             <nav class="col-md-2 d-none d-md-block bg-light sidebar">
                 <div class="sidebar-sticky">
                     <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link active" href="/admin">
-                                Panel
-                            </a>
-                        </li>
-                        <!-- <li class="nav-item">
-                            <a class="nav-link" href="/admin/clientes">
-                                Clientes
-                            </a>
-                        </li> -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="/admin/ventas">
-                                Ventas
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/admin/previsualizador">
-                                Previsualizador
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/admin/multimedia">
-                                Multimedia
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/admin/configuracion">
-                                Configuración
-                            </a>
-                        </li>
+                        <% if (adminMenuItems && adminMenuItems.length > 0) { %>
+                            <% adminMenuItems.forEach(function(item) { %>
+                                <% if (!item.parent_id) { %>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="<%= item.path %>">
+                                            <% if (item.icon_class) { %>
+                                                <i class="<%= item.icon_class %> me-2"></i>
+                                            <% } %>
+                                            <%= item.title %>
+                                        </a>
+                                    </li>
+                                <% } %>
+                            <% }); %>
+                        <% } else { %>
+                            <li class="nav-item">
+                                <span class="nav-link text-muted">No hay menú disponible.</span>
+                            </li>
+                        <% } %>
+                        <!-- Enlace al editor de menú siempre disponible para admins (o según se defina) -->
+                        <% if (currentUser && currentUser.role === 'admin') { %>
+                            <li class="nav-item mt-3 border-top pt-3">
+                                <a class="nav-link" href="/admin/menu-editor">
+                                    <i class="fas fa-edit me-2"></i>
+                                    Editar Menú
+                                </a>
+                            </li>
+                        <% } %>
                     </ul>
                 </div>
             </nav>

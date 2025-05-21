@@ -57,18 +57,58 @@ async function generateLlamaCompletion(userPrompt) {
 
     // Procesar la respuesta para extraer el código
     if (llamaResponse.data && llamaResponse.data.choices && llamaResponse.data.choices[0] && llamaResponse.data.choices[0].message && llamaResponse.data.choices[0].message.content) {
+      const contentString = llamaResponse.data.choices[0].message.content;
+      let parsedContent;
+
       try {
-        const contentJsonString = llamaResponse.data.choices[0].message.content;
-        const parsedContent = JSON.parse(contentJsonString);
-        return {
-          html: parsedContent.html_code || '',
-          css: parsedContent.css_code || '',
-          js: parsedContent.js_code || ''
+        // Intento 1: Parsear directamente como JSON (esperado según el system prompt)
+        parsedContent = JSON.parse(contentString);
+      } catch (e) {
+        // Intento 2: Si falla el JSON.parse, intentar con regex (para el caso donde la IA devuelve un string con formato de objeto JS y backticks o comillas)
+        console.warn("JSON.parse falló para la respuesta directa de la IA, intentando regex para extraer contenido. Error de parseo:", e.message);
+        console.warn("Content string que falló JSON.parse:", contentString);
+
+        const extractWithRegex = (key, str) => {
+          // Prioriza backticks si existen para un campo.
+          let regex = new RegExp(`"${key}"\\s*:\\s*\`([\\s\\S]*?)\``);
+          let match = str.match(regex);
+          if (match && match[1]) return match[1].trim();
+
+          // Fallback a comillas dobles si no se encontraron backticks para esta clave
+          // Esta regex captura contenido entre comillas dobles, manejando comillas escapadas dentro.
+          regex = new RegExp(`"${key}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"`);
+          match = str.match(regex);
+          if (match && match[1]) {
+            // La cadena capturada (match[1]) ya está decodificada de escapes como \\ y \".
+            // Para decodificar \n, \t, etc., necesitamos parsearla como una cadena JSON.
+            try {
+              return JSON.parse(`"${match[1].replace(/"/g, '\\"')}"`); // Re-escapar comillas internas para el parse
+            } catch (jsonParseError) {
+              console.error(`Error al parsear valor de regex para ${key}:`, jsonParseError, "Valor original:", match[1]);
+              return match[1]; // Devolver el valor tal cual si el parseo de la subcadena falla
+            }
+          }
+          return ''; // Devolver cadena vacía si no hay coincidencia
         };
-      } catch (parseError) {
-        console.error("Error parsing IA response content JSON en aiService:", parseError);
-        console.error("IA response content string:", llamaResponse.data.choices[0].message.content);
-        throw new Error('La respuesta de la IA no tuvo el formato JSON esperado en su contenido.');
+        
+        parsedContent = {
+          html_code: extractWithRegex("html_code", contentString),
+          css_code: extractWithRegex("css_code", contentString),
+          js_code: extractWithRegex("js_code", contentString)
+        };
+      }
+
+      // Verificar si se extrajo al menos el html_code
+      if (parsedContent && (parsedContent.html_code || parsedContent.html_code === '')) { // Permitir html_code vacío
+        return {
+          html_code: parsedContent.html_code,
+          css_code: parsedContent.css_code || '',
+          js_code: parsedContent.js_code || ''
+          // No hay información de tokens_cost aquí por ahora
+        };
+      } else {
+        console.error("No se pudo extraer contenido válido de la respuesta de la IA. Respuesta original:", contentString, "Contenido parseado/extraído:", parsedContent);
+        throw new Error('La respuesta de la IA no pudo ser procesada para extraer el contenido HTML.');
       }
     } else {
       console.error("Unexpected IA response structure in aiService:", llamaResponse.data);

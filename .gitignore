@@ -23,4 +23,5 @@ pnpm-debug.log*
 
 # Directorios de contenido dinámico o de prueba (opcional, descomentar si se desea ignorar)
 public/uploads/
+public/cards/
 # public/cliente_prueba/

@@ -136,24 +136,32 @@
 
                     section.fields_config_json.forEach(function(field) {
                         alpacaSchema.properties[field.name] = {
-                            "type": "string" // Default
+                            // "type": "string" // Default, se ajustará abajo
                         };
-                        if (field.type === 'url') alpacaSchema.properties[field.name].format = "uri";
-                        if (field.type === 'number') alpacaSchema.properties[field.name].type = "number";
-                        if (field.type === 'boolean') alpacaSchema.properties[field.name].type = "boolean";
-                        // textarea y password se manejan en options.type para Alpaca
 
-                        let alpacaFieldType = field.type;
-                        if (field.type === 'textarea' || field.type === 'password' || field.type === 'url' || field.type === 'number' || field.type === 'boolean') {
-                           // Alpaca usa estos tipos directamente en options
+                        if (field.type === 'number') {
+                            alpacaSchema.properties[field.name].type = "number";
+                        } else if (field.type === 'boolean') {
+                            alpacaSchema.properties[field.name].type = "boolean";
+                        } else if (field.type === 'url') {
+                            alpacaSchema.properties[field.name].type = "string";
+                            alpacaSchema.properties[field.name].format = "uri";
                         } else {
-                           alpacaFieldType = 'text'; // Default para otros
+                            alpacaSchema.properties[field.name].type = "string"; // Default para text, textarea, password
                         }
                         
+                        let optionFieldType = field.type;
+                        if (field.type === 'boolean') {
+                            optionFieldType = 'checkbox'; // Para que Alpaca renderice un checkbox
+                        } else if (field.type === 'url') {
+                            optionFieldType = 'url'; // Alpaca tiene un tipo de campo URL
+                        }
+                        // textarea, password, number, text son tipos válidos para options.fields[...].type
+
                         alpacaOptions.fields[field.name] = {
                             "label": field.label,
                             "placeholder": field.placeholder,
-                            "type": alpacaFieldType
+                            "type": optionFieldType
                         };
                         alpacaData[field.name] = field.value;
                     });
@@ -210,5 +218,5 @@
                 }
             });
         });
-    <\/script>
+    </script>
 `) %>

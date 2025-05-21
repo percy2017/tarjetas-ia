@@ -1,1 +1,0 @@
-console.log('Bienvenido a Aventuras por el Mundo!');
