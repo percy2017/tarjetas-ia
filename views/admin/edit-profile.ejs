@@ -1,0 +1,88 @@
+<%- layout('layouts/adminLayout') %>
+
+<div class="container mt-4">
+    <h2>Editar Perfil</h2>
+    <hr>
+
+    <% if (locals.successMessage && successMessage.length > 0) { %>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <%= successMessage %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <% } %>
+    <% if (locals.errorMessage && errorMessage.length > 0) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <%= errorMessage %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <% } %>
+
+    <% if (currentUser) { %>
+    <form action="/admin/profile/edit" method="POST">
+        <div class="mb-3">
+            <label for="username" class="form-label">Nombre de Usuario (no editable)</label>
+            <input type="text" class="form-control" id="username" name="username" value="<%= currentUser.username %>" readonly>
+        </div>
+        <div class="mb-3">
+            <label for="email" class="form-label">Correo Electrónico (no editable)</label>
+            <input type="email" class="form-control" id="email" name="email" value="<%= currentUser.email %>" readonly>
+        </div>
+        <div class="mb-3">
+            <label for="first_name" class="form-label">Nombres</label>
+            <input type="text" class="form-control" id="first_name" name="first_name" value="<%= currentUser.first_name || '' %>" required>
+        </div>
+        <div class="mb-3">
+            <label for="last_name" class="form-label">Apellidos</label>
+            <input type="text" class="form-control" id="last_name" name="last_name" value="<%= currentUser.last_name || '' %>" required>
+        </div>
+        <div class="mb-3">
+            <label for="phone" class="form-label">Teléfono</label>
+            <input type="tel" class="form-control" id="phone" name="phone" value="<%= currentUser.phone || '' %>">
+            <small class="form-text text-muted">Incluye el código de país, ej: +59170012345</small>
+        </div>
+        <div class="mb-3">
+            <label for="avatar_url" class="form-label">URL del Avatar</label>
+            <input type="url" class="form-control" id="avatar_url" name="avatar_url" value="<%= currentUser.avatar_url || '' %>" placeholder="https://ejemplo.com/imagen.jpg">
+            <small class="form-text text-muted">Pega la URL completa de una imagen para tu avatar.</small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        <a href="/admin" class="btn btn-secondary">Cancelar</a>
+    </form>
+    <% } else { %>
+        <p>No se pudo cargar la información del usuario. Por favor, <a href="/login">inicia sesión</a> de nuevo.</p>
+    <% } %>
+</div>
+
+<% block('pageStyles').append('<link rel="stylesheet" href="/vendor/intl-tel-input/css/intlTelInput.min.css">') %>
+<% block('pageScripts').append('<script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>') %>
+<% block('pageScripts').append(`
+<script>
+  // Inicializar intl-tel-input si el campo de teléfono existe
+  const phoneInputField = document.querySelector("#phone");
+  if (phoneInputField) {
+    try {
+      const phoneInput = window.intlTelInput(phoneInputField, {
+        initialCountry: "auto",
+        geoIpLookup: function(callback) {
+          fetch("https://ipapi.co/json")
+            .then(function(res) { return res.json(); })
+            .then(function(data) { callback(data.country_code); })
+            .catch(function() { callback("us"); });
+        },
+        utilsScript: "/vendor/intl-tel-input/js/utils.js", // Necesario para validación y formato
+      });
+      
+      // Si tienes un formulario, al enviarlo, obtén el número internacional completo
+      // const form = phoneInputField.closest('form');
+      // form.addEventListener('submit', function() {
+      //   const fullNumber = phoneInput.getNumber(); // Esto da el número en formato E.164
+      //   phoneInputField.value = fullNumber; // Actualiza el campo antes de enviar
+      // });
+
+    } catch (e) {
+      console.warn("No se pudo inicializar intlTelInput, ¿están los archivos en public/vendor/intl-tel-input/ ?", e);
+    }
+  }
+</script>
+`) %>

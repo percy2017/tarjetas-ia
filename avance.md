@@ -18,6 +18,8 @@
 *   **Hashing de Contraseñas:** **bcryptjs**.
 *   **Generación de Contraseñas:** `generate-password`.
 *   **Envío de Correos:** `Nodemailer`.
+*   **Comunicación en Tiempo Real:** **Socket.IO**.
+*   **Integración API Externa (WhatsApp):** `axios` para interactuar con Evolution API.
 *   **Contenerización y Despliegue:** Docker, Docker Compose.
 
 ## 3. Estado Actual del Proyecto (Actualizado)
@@ -44,6 +46,7 @@ Se ha comenzado la implementación de la **gestión de tarjetas digitales (`card
 *   **Gestión de Rutas y Middlewares:** Se ajustó el orden de definición de rutas en `app.js` para asegurar que las rutas específicas (ej. `/admin/previsualizador`) se manejen antes que los routers más generales (ej. `adminMenuRouter`) para evitar conflictos de middlewares de autorización.
 *   **Dependencias Faltantes:** Se instaló `fs-extra` cuando fue necesario.
 *   **Errores de Referencia:** Se corrigieron errores como `upload is not defined` y `successMessage is not defined` ajustando el orden de definición de variables o la forma de acceder a ellas.
+*   **Error de Ruta de Layout con `ejs-mate`:** Se corrigió un error `ENOENT (No such file or directory)` relacionado con la forma en que las vistas en subdirectorios (ej. `views/admin/`) referenciaban al layout principal. La solución fue cambiar la referencia de `<%- layout('../layouts/adminLayout') %>` a `<%- layout('layouts/adminLayout') %>`, asegurando que la ruta al layout se resuelva correctamente desde el directorio base de `views`.
 
 La aplicación se despliega con Docker y está accesible en un VPS.
 
@@ -67,22 +70,32 @@ La aplicación se despliega con Docker y está accesible en un VPS.
     *   Otras rutas protegidas bajo `/admin/*` usando el middleware `requireLogin`.
 *   **Ruta `POST /admin/previsualizador`:** Utiliza `services/aiService.js`. Lee config de API desde BD (`configs`), envía prompt a la IA. Devuelve el contenido generado (HTML, CSS, JS) como JSON al frontend para previsualización dinámica.
     *   **Ruta `GET /admin/previsualizador`:** Permite iniciar la creación de una nueva tarjeta (`?action=new`) o (pendiente) cargar una tarjeta existente para editar o la última creada.
-    *   **Ruta `POST /admin/configuracion/secciones/crear`:** Creación de nuevas secciones de configuración.
+*   **Ruta `POST /admin/configuracion/secciones/crear`:** Creación de nuevas secciones de configuración.
 *   **Rutas para Tarjetas (`routes/cards.js` montado en `/admin/cards`):**
     *   `GET /`: Lista las tarjetas del usuario actual (usa DataTables).
     *   `POST /`: Crea una nueva tarjeta, guarda archivos en `public/cards/:profile_slug/:card_slug/`, registra en BD (incluyendo `original_prompt`, `tokens_cost`), y actualiza `users.tokens_used`.
+*   **Rutas para Edición de Perfil (`routes/profile.js` montado en `/admin/profile`):**
+    *   `GET /edit`: Muestra el formulario de edición de perfil.
+    *   `POST /edit`: Procesa la actualización de los datos del perfil del usuario (`first_name`, `last_name`, `phone`, `avatar_url`).
 
 ### 4.1.1. Servicios (`services/`) (Actualizado)
 *   **`services/aiService.js`:**
     *   Encapsula la lógica de interacción con APIs de IA (Llama).
     *   Obtiene config de API desde la tabla `configs`.
     *   Procesa la respuesta de la IA (que puede no ser JSON estricto) de forma robusta, intentando `JSON.parse()` y usando expresiones regulares como fallback para extraer `html_code`, `css_code`, `js_code`.
-*   **`services/notificationService.js`:**
-    *   Nuevo servicio para manejar notificaciones.
+*   **`services/notificationService.js` (Actualizado):**
     *   Función `sendWelcomeEmail(userData, generatedPassword)`:
         *   Obtiene configuración SMTP de la tabla `configs` (sección `smtp_settings`).
-        *   Utiliza `Nodemailer` para enviar un correo de bienvenida al nuevo usuario con su `username` y `generatedPassword`.
-        *   Incluye manejo de errores para el envío de correo (ej. `ERR_TLS_CERT_ALTNAME_INVALID` solucionado con `rejectUnauthorized: false` para desarrollo).
+        *   Utiliza `Nodemailer` para enviar un correo de bienvenida.
+    *   **Nueva Función `sendWelcomeWhatsApp(userData, generatedPassword, whatsappPhoneNumber)`:**
+        *   Obtiene configuración de Evolution API (URL base, API Key) desde la tabla `configs` (sección `evolution_api`).
+        *   Llama al endpoint `/instance/fetchInstances` de Evolution API para obtener instancias activas.
+        *   Itera sobre las instancias activas e intenta enviar un mensaje de bienvenida de WhatsApp a través del endpoint `/message/sendText/{instanceName}`.
+        *   Maneja el éxito o fallo del envío.
+*   **`services/socketService.js` (Nuevo):**
+    *   Encapsula la inicialización y configuración del servidor Socket.IO.
+    *   Maneja conexiones de clientes, desconexiones y eventos básicos.
+    *   Proporciona una función `getIoInstance()` para acceder a la instancia de `io` desde otros módulos (aunque actualmente se pasa `io` a `req` en `app.js`).
 
 ### 4.2. Vistas y Frontend
 
@@ -97,9 +110,15 @@ La aplicación se despliega con Docker y está accesible en un VPS.
     *   Muestra mensajes flash (`successMessage`, `errorMessage`) obtenidos de `res.locals`.
 *   **`views/admin.ejs` (Dashboard Admin):** Sin cambios recientes significativos.
 *   **`views/layouts/adminLayout.ejs` (Actualizado):**
-    *   El menú lateral se genera dinámicamente a partir de `res.locals.adminMenuItems` (cargados en `app.js` desde la BD y filtrados por rol).
+    *   El menú lateral se genera dinámicamente a partir de `res.locals.adminMenuItems`.
     *   Incluye Font Awesome globalmente.
+    *   **Ajuste Visual del Sidebar de Perfil:** Modificado para que el campo "Nombre" muestre "N/A" si `first_name` y `last_name` del usuario están vacíos, en lugar de mostrar el `username` como fallback.
+    *   **Scripts de Socket.IO:** Incluye los scripts necesarios para el cliente Socket.IO (`/socket.io/socket.io.js` y `/js/socket-client-setup.js`).
+    *   **Visualización de Mensajes Flash:** Muestra `successMessage`, `errorMessage` y `warningMessage` (este último para notificaciones generales o de perfil incompleto).
 *   **`views/admin.ejs` (Dashboard Admin):** Sin cambios recientes significativos.
+*   **`views/admin/edit-profile.ejs` (Nueva Vista):**
+    *   Formulario para que el usuario edite `first_name`, `last_name`, `phone` y `avatar_url`.
+    *   Incluye inicialización para `intl-tel-input` en el campo de teléfono.
 *   **`views/previsualizador.ejs` (Actualizado):**
     *   Maneja la respuesta JSON de la IA para actualizar el iframe dinámicamente.
     *   Incluye botón "Guardar Tarjeta" y modal para ingresar título.
@@ -121,21 +140,30 @@ La aplicación se despliega con Docker y está accesible en un VPS.
 ### 4.3. Autenticación (`routes/auth.js`) (Actualizado)
 
 *   **Ruta `POST /register`:**
-    *   Genera y guarda un `profile_slug` único para el nuevo usuario.
-    *   Genera automáticamente un `username` único.
-    *   Genera automáticamente una `password` segura usando `generate-password`.
-    *   Hashea la contraseña con `bcryptjs`.
+    *   Genera y guarda un `profile_slug` único.
+    *   Genera `username` único y `password` segura.
+    *   Hashea la contraseña.
     *   Crea el nuevo usuario en la tabla `users` con `role: 'client'`.
-    *   Llama a `sendWelcomeEmail` de `notificationService.js` para enviar las credenciales al usuario.
+    *   Llama a `sendWelcomeEmail` de `notificationService.js`.
+    *   **Llama a `sendWelcomeWhatsApp` de `notificationService.js`** para enviar credenciales/bienvenida por WhatsApp.
     *   Redirige a `/login` con mensaje de éxito.
 *   **Ruta `POST /login`:**
     *   Modificada para que tanto usuarios con rol `'admin'` como `'client'` sean redirigidos a `/admin` tras un inicio de sesión exitoso.
 *   Ruta GET `/login` y GET `/logout`: Sin cambios funcionales mayores.
 
 ### 4.4. Middleware y Configuración Adicional en `app.js`
-*   Middleware global para `currentUser`, mensajes flash y `adminMenuItems` (menú dinámico).
+*   Middleware global para `currentUser`, mensajes flash (`successMessage`, `errorMessage`), `adminMenuItems` (menú dinámico), y la instancia `io` de Socket.IO (`req.io`).
+    *   Este middleware también incluye lógica para detectar si el perfil del usuario (`first_name`, `last_name`, `phone`, `avatar_url`) está incompleto, considerando también `avatar_url === 'null'` como incompleto.
+*   **Notificación de Perfil Incompleto (Solucionado):**
+    *   Después de varios intentos para pasar un mensaje de advertencia desde el backend (`res.locals.warningMessage`) a la plantilla del layout para ser renderizado como un `div` de Bootstrap, se encontró que esta variable no llegaba consistentemente al layout.
+    *   La solución final implementada consiste en un script del lado del cliente en `views/layouts/adminLayout.ejs` que se ejecuta en `DOMContentLoaded`.
+    *   Este script accede a la variable `currentUser` (que sí está consistentemente disponible en la plantilla, ya que se usa para el sidebar de perfil).
+    *   Verifica los campos del perfil (`first_name`, `last_name`, `phone`, `avatar_url`) directamente desde `currentUser`.
+    *   Si el perfil está incompleto y el usuario no está en la página "Editar Perfil", el script crea dinámicamente un `div` de alerta de Bootstrap (`alert alert-warning`) con el mensaje "Tu perfil está incompleto. Algunos datos son necesarios para generar tus tarjetas correctamente. <a class="alert-link" href="/admin/profile/edit">Haz clic aquí para completarlo</a>." y lo inserta al principio del elemento `<main>` de la página.
+    *   Esto asegura que la notificación se muestre correctamente y el enlace dirija al usuario a la página de edición de perfil.
 *   Añadido `express.json()` para parsear JSON bodies.
-*   Reorganización del orden de rutas para priorizar rutas específicas sobre routers generales.
+*   Reorganización del orden de rutas.
+*   **Servidor HTTP y Socket.IO:** `app.js` ahora crea un servidor HTTP explícito y lo usa para inicializar Express y Socket.IO, escuchando en el mismo puerto.
 
 ### 4.5. Gestión de Menú del Panel (Completado para CRUD básico)
 *   **Rutas (`routes/adminMenu.js`):**
@@ -171,16 +199,20 @@ La aplicación se despliega con Docker y está accesible en un VPS.
 *   `app.js`: Archivo principal.
 *   `routes/auth.js`: Manejo de autenticación y registro (con generación de `profile_slug`).
 *   `routes/adminMenu.js`: CRUD para ítems de menú.
-*   `routes/cards.js`: (Nuevo) Gestión de tarjetas.
-*   `services/aiService.js`: Interacción con IA, parseo robusto de respuesta.
-*   `services/notificationService.js`: Envío de correos.
-*   `views/layouts/adminLayout.ejs`: Layout principal con menú dinámico.
+*   `routes/cards.js`: Gestión de tarjetas.
+*   `routes/profile.js`: (Nuevo) Rutas para edición de perfil de usuario.
+*   `services/aiService.js`: Interacción con IA.
+*   `services/notificationService.js`: Envío de correos y mensajes de WhatsApp.
+*   `services/socketService.js`: (Nuevo) Lógica del servidor Socket.IO.
+*   `views/layouts/adminLayout.ejs`: Layout principal con menú dinámico, scripts de Socket.IO y visualización de mensajes flash.
 *   `views/admin/menu-editor.ejs`: Interfaz del editor de menús.
-*   `views/admin/cards.ejs`: (Nueva) Interfaz para listar tarjetas.
-*   `views/previsualizador.ejs`: Interfaz para generar y previsualizar contenido de IA, y para iniciar el guardado de tarjetas.
+*   `views/admin/cards.ejs`: Interfaz para listar tarjetas.
+*   `views/admin/edit-profile.ejs`: (Nueva) Formulario para editar perfil de usuario.
+*   `views/previsualizador.ejs`: Interfaz para generar y previsualizar contenido de IA.
 *   `public/js/admin-menu-editor.js`: JS para el editor de menús.
-*   `public/js/admin-cards-datatable.js`: JS para DataTables en la lista de tarjetas.
-*   `public/js/admin-previsualizador.js`: (Asumido, o el script está en `previsualizador.ejs`) JS para el previsualizador.
+*   `public/js/admin-cards.js`: (Asumido, anteriormente `admin-cards-datatable.js`) JS para la lista de tarjetas.
+*   `public/js/admin-previsualizador.js`: JS para el previsualizador.
+*   `public/js/socket-client-setup.js`: (Nuevo) Configuración del cliente Socket.IO.
 
 ## 7. Configuración de Despliegue (Docker)
 *   Considerar añadir `fs-extra` a `package.json` si no está, y otras nuevas dependencias.
@@ -210,7 +242,9 @@ La aplicación se despliega con Docker y está accesible en un VPS.
 *   **Integrar `media_files` con Sección Multimedia.**
 *   **Resolver error 404 para `placeholder.jpg`** en previsualizador (si aún persiste o es relevante).
 *   **Seguridad de `SESSION_SECRET` y valores de producción en `docker-compose.yml`.**
-*   **(Opcional) Funcionalidad "Loguearse con WhatsApp".**
+*   **(Opcional) Funcionalidad "Loguearse con WhatsApp" (planificada, pendiente de API externa).**
+*   **(Solucionado) Notificación persistente para completar perfil.** (Implementado mediante script del lado del cliente que genera un div de alerta).
+*   **(Pendiente) Guía para crear primera tarjeta.**
 *   **(Opcional) HTTPS.**
 *   Revisar `DeprecationWarning: The \`util.isArray\` API is deprecated`.
 

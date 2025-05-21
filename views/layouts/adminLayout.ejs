@@ -91,6 +91,18 @@
                 </div>
             </nav>
             <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
+                <% if (locals.successMessage && successMessage.length > 0) { %>
+                    <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                        <%= successMessage %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <% } %>
+                <% if (locals.errorMessage && errorMessage.length > 0) { %>
+                    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                        <%= errorMessage %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <% } %>
                 <%- body %>
             </main>
         </div>
@@ -102,6 +114,8 @@
     <script src="/js/sweetalert2.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.7/handlebars.min.js"></script>
     <script src="/js/alpaca.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/socket-client-setup.js"></script>
     <script>
         const darkModeSwitch = document.getElementById('darkModeSwitch');
         const body = document.body;
@@ -154,12 +168,11 @@
         
         if (currentUser && Object.keys(currentUser).length > 0) {
             if (userNameDisplay) {
-                if (currentUser.first_name || currentUser.last_name) {
-                    userNameDisplay.textContent = `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim();
-                } else if (currentUser.username) {
-                    userNameDisplay.textContent = currentUser.username; // Fallback si no hay nombre/apellido
+                const nombreCompleto = `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim();
+                if (nombreCompleto) {
+                    userNameDisplay.textContent = nombreCompleto;
                 } else {
-                    userNameDisplay.textContent = 'N/A';
+                    userNameDisplay.textContent = 'N/A'; // O '' si prefieres campo vacío
                 }
             }
             if (userEmailDisplay) userEmailDisplay.textContent = currentUser.email || 'N/A';
@@ -233,6 +246,77 @@
                 link.classList.add('active'); // Add active class to the current page's link
             }
         });
+    </script>
+
+    <!-- Script para generar dinámicamente el DIV de alerta de perfil incompleto -->
+    <script>
+        (function() {
+            // Esperar a que el DOM esté completamente cargado
+            document.addEventListener('DOMContentLoaded', function() {
+                var scriptCurrentUser = null;
+                try {
+                    // Asegúrate de que 'currentUser' esté disponible globalmente o pásalo de otra manera si es necesario
+                    // Esta línea asume que el script anterior que define 'currentUser' ya se ejecutó
+                    // o que 'currentUser' se inyecta directamente aquí por EJS.
+                    // Para mayor seguridad, lo volvemos a obtener como en el script del sidebar.
+                    scriptCurrentUser = JSON.parse('<%- JSON.stringify(currentUser) %>');
+                } catch (e) {
+                    console.error('Error parsing currentUser para generar div de alerta:', e);
+                }
+
+                if (scriptCurrentUser && typeof scriptCurrentUser === 'object' && scriptCurrentUser !== null) {
+                    var currentPageName = "";
+                    <% if (typeof currentPage !== 'undefined') { %>
+                        currentPageName = <%- JSON.stringify(currentPage) %>;
+                    <% } %>
+
+                    // No mostrar en la página de edición de perfil
+                    if (currentPageName === "Editar Perfil") { // Ajusta "Editar Perfil" si es necesario
+                        console.log("En página de Editar Perfil, no se genera div de alerta de perfil incompleto.");
+                        return;
+                    }
+
+                    let esIncompleto = false;
+                    if (!scriptCurrentUser.first_name || 
+                        !scriptCurrentUser.last_name || 
+                        !scriptCurrentUser.phone || 
+                        !scriptCurrentUser.avatar_url || 
+                        scriptCurrentUser.avatar_url === 'null') {
+                        esIncompleto = true;
+                    }
+
+                    if (esIncompleto) {
+                        const mensajeHtml = 'Tu perfil está incompleto. Algunos datos son necesarios para generar tus tarjetas correctamente. <a class="alert-link" href="/admin/profile/edit">Haz clic aquí para completarlo</a>.';
+                        
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-warning alert-dismissible fade show mt-3';
+                        alertDiv.setAttribute('role', 'alert');
+                        
+                        alertDiv.innerHTML = mensajeHtml; // El mensaje ya contiene el HTML del enlace
+                        
+                        const closeButton = document.createElement('button');
+                        closeButton.type = 'button';
+                        closeButton.className = 'btn-close';
+                        closeButton.setAttribute('data-bs-dismiss', 'alert');
+                        closeButton.setAttribute('aria-label', 'Close');
+                        
+                        alertDiv.appendChild(closeButton);
+                        
+                        const mainElement = document.querySelector('main[role="main"]');
+                        if (mainElement) {
+                            mainElement.insertBefore(alertDiv, mainElement.firstChild);
+                            console.log("Div de alerta de perfil incompleto insertado en el DOM.");
+                        } else {
+                            console.error("No se encontró el elemento <main> para insertar el div de alerta.");
+                        }
+                    } else {
+                        console.log("Perfil completo según scriptCurrentUser, no se generó div de alerta.");
+                    }
+                } else {
+                    console.log("No se pudo obtener currentUser para generar div de alerta de perfil incompleto.");
+                }
+            });
+        })();
     </script>
     <%- block('pageScripts') %>
 </body>

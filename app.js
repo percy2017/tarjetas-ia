@@ -2,9 +2,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
+import http from 'http'; // <--- AÑADIDO para Socket.IO
 import { fileURLToPath } from 'url';
 import path from 'path'; // Importar path
 import fs from 'fs'; // Importar fs
+import { initializeSocket, getIoInstance } from './services/socketService.js'; // <--- AÑADIDO para Socket.IO
 import authRoutes from './routes/auth.js';
 import bodyParser from 'body-parser';
 import session from 'express-session';
@@ -17,12 +19,15 @@ import db from './db.cjs'; // Importar la instancia de Knex
 import { generateLlamaCompletion } from './services/aiService.js'; // Importar el servicio de IA
 import adminMenuRouter from './routes/adminMenu.js'; // Importar el router del editor de menú
 import cardsRouter from './routes/cards.js'; // Importar el router de tarjetas
+import profileRouter from './routes/profile.js'; // <--- AÑADIDO para rutas de perfil
 import flash from 'connect-flash'; // Importar connect-flash
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const server = http.createServer(app); // <--- AÑADIDO para Socket.IO
+const io = initializeSocket(server); // <--- AÑADIDO para Socket.IO
 const port = process.env.PORT || 3000;
 
 app.engine('ejs', engine);
@@ -34,15 +39,64 @@ app.use(express.json()); // Middleware para parsear JSON bodies
 app.use(session({ secret: process.env.SESSION_SECRET || 'default_fallback_secret', resave: false, saveUninitialized: false }));
 app.use(flash()); // Configurar connect-flash DESPUÉS de session
 
+// Middleware para hacer io accesible en las rutas
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 // Middleware para pasar datos del usuario y mensajes flash a las vistas
 app.use((req, res, next) => {
+  // 1. Establecer currentUser
   if (req.session && req.session.user) {
     res.locals.currentUser = req.session.user;
   } else {
     res.locals.currentUser = null;
   }
+
+  // 2. Lógica para notificación de perfil incompleto
+  res.locals.profileIncomplete = false; 
+  const userForCheck = res.locals.currentUser;
+
+  // Inicializar warningMessage con lo que venga de flash (para otros warnings)
+  res.locals.warningMessage = req.flash('warningMessage');
+
+  if (userForCheck && req.path.startsWith('/admin')) {
+    console.log(`[Perfil Check] Usuario: ${userForCheck.username}`);
+    console.log(`[Perfil Check] First Name: '${userForCheck.first_name}', Empty: ${!userForCheck.first_name}`);
+    console.log(`[Perfil Check] Last Name: '${userForCheck.last_name}', Empty: ${!userForCheck.last_name}`);
+    console.log(`[Perfil Check] Phone: '${userForCheck.phone}', Empty: ${!userForCheck.phone}`);
+    console.log(`[Perfil Check] Avatar URL: '${userForCheck.avatar_url}', Empty: ${!userForCheck.avatar_url || userForCheck.avatar_url === 'null'}`);
+
+    if (!userForCheck.first_name || !userForCheck.last_name || !userForCheck.phone || !userForCheck.avatar_url || userForCheck.avatar_url === 'null') {
+      console.log(`[Perfil Check] Resultado: Perfil INCOMPLETO para ${userForCheck.username}`);
+      res.locals.profileIncomplete = true;
+      if (req.path !== '/admin/profile/edit' && req.method === 'GET') {
+        const mensajeAdvertenciaPerfil = 'Tu perfil está incompleto. Algunos datos son necesarios para generar tus tarjetas correctamente. <a class="alert-link" href="/admin/profile/edit">Haz clic aquí para completarlo</a>.';
+        // Sobrescribir o añadir el mensaje de perfil incompleto a res.locals.warningMessage para la vista actual
+        // Lo convertimos a array para que la vista lo maneje igual que flash
+        res.locals.warningMessage = [mensajeAdvertenciaPerfil]; 
+      }
+    } else {
+      console.log(`[Perfil Check] Resultado: Perfil COMPLETO para ${userForCheck.username}`);
+      // Si el perfil está completo, y el único warning era sobre el perfil, lo limpiamos para esta vista.
+      // Esto es opcional, pero evita mostrar un flash viejo de "perfil incompleto" si ya se completó.
+      // Sin embargo, req.flash() ya lo habría consumido si se mostró.
+      // Por ahora, no hacemos nada aquí, la ausencia del if anterior es suficiente.
+    }
+  }
+
+  // 3. Asignar otros mensajes flash estándar a res.locals
   res.locals.successMessage = req.flash('successMessage');
   res.locals.errorMessage = req.flash('errorMessage');
+  // res.locals.warningMessage ya fue asignado arriba, combinando flash y lógica de perfil incompleto.
+
+  // 4. Logs de depuración para los mensajes que se pasarán a la vista
+  console.log("[Flash Check] successMessage para la vista:", res.locals.successMessage);
+  console.log("[Flash Check] errorMessage para la vista:", res.locals.errorMessage);
+  console.log("[Flash Check] warningMessage (final para la vista):", res.locals.warningMessage);
+  console.log("[Direct Warning Check] displaySpecificWarning (interno):", res.locals.displaySpecificWarning);
+  
   next();
 });
 
@@ -87,25 +141,6 @@ app.use(async (req, res, next) => {
 
 app.use('/', authRoutes); // Rutas de autenticación primero
 
-// TODO: Configurar conexión a MySQL usando variables de entorno
-// import mysql from 'mysql2/promise'; // o el driver que prefieras
-// const dbConfig = {
-//   host: process.env.DB_HOST,
-//   user: process.env.DB_USER,
-//   password: process.env.DB_PASS,
-//   database: process.env.DB_NAME
-// };
-// async function testDbConnection() {
-//   try {
-//     const connection = await mysql.createConnection(dbConfig);
-//     console.log('Conectado a MySQL DB!');
-//     await connection.end();
-//   } catch (error) {
-//     console.error('Error conectando a MySQL DB:', error);
-//   }
-// }
-// testDbConnection(); // Descomentar para probar la conexión al iniciar
-
 const requireLogin = (req, res, next) => {
   if (req.session && req.session.loggedIn) {
     next();
@@ -116,8 +151,16 @@ const requireLogin = (req, res, next) => {
 
 // Definir la ruta específica para el dashboard /admin ANTES del router más general
 app.get('/admin', requireLogin, (req, res) => {
-  // currentUser estará disponible en la plantilla gracias al middleware
-  res.render('admin', { title: 'Admin Dashboard', currentPage: 'Dashboard' });
+  // El middleware global ya debería haber establecido res.locals.currentUser 
+  // y res.locals.warningMessage si el perfil está incompleto.
+  // Simplemente renderizamos la vista.
+  console.log("Renderizando '/admin'. warningMessage desde middleware global:", res.locals.warningMessage);
+  res.render('admin', { 
+    title: 'Admin Dashboard', 
+    currentPage: 'Dashboard' 
+    // Las variables de res.locals (como currentUser, warningMessage, etc.)
+    // estarán disponibles automáticamente en la plantilla.
+  });
 });
 
 // Configuración de Multer para subida de archivos
@@ -294,8 +337,10 @@ app.post('/admin/configuracion/secciones/crear', requireLogin, async (req, res) 
 });
 
 // El adminMenuRouter debe ir DESPUÉS de las rutas específicas de /admin/*
-app.use('/admin/cards', cardsRouter); // Rutas para la gestión de tarjetas
-app.use('/admin', adminMenuRouter); // Rutas para el editor de menú y otras bajo /admin/*
+app.use('/admin/cards', requireLogin, cardsRouter); // Rutas para la gestión de tarjetas (asegurar requireLogin)
+app.use('/admin/profile', requireLogin, profileRouter); // <--- AÑADIDO para rutas de perfil
+app.use('/admin', requireLogin, adminMenuRouter); // Rutas para el editor de menú y otras bajo /admin/* (asegurar requireLogin)
+
 
 // Esta es la ruta GET /admin/previsualizador original que debe ser eliminada o reemplazada.
 // La nueva versión está más abajo. Para evitar duplicados, la eliminaremos aquí.
@@ -309,6 +354,7 @@ app.get('/', (req, res) => {
   res.render('index', { title: 'Hola Mundo' });
 });
 
-app.listen(port, () => {
+server.listen(port, () => { // <--- CAMBIADO de app.listen a server.listen
   console.log(`La aplicación está escuchando en el puerto ${port}`);
+  console.log(`Socket.IO también está activo en el puerto ${port}`);
 });

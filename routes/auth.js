@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import generator from 'generate-password';
 import { createRequire } from 'module';
-import { sendWelcomeEmail } from '../services/notificationService.js';
+import { sendWelcomeEmail, sendWelcomeWhatsApp } from '../services/notificationService.js'; // <--- AÑADIDO sendWelcomeWhatsApp
 
 const require = createRequire(import.meta.url);
 const db = require('../db.cjs'); // Importar db.cjs
@@ -110,6 +110,19 @@ router.post('/register', async (req, res) => {
       // El error ya se loguea dentro de sendWelcomeEmail
       // Continuar con el flujo de registro incluso si el correo falla
       console.error("Fallo el envío del correo de bienvenida, pero el usuario fue creado:", emailError.message);
+    }
+
+    // Enviar mensaje de bienvenida por WhatsApp
+    if (newUser.phone) {
+      try {
+        await sendWelcomeWhatsApp({
+          first_name: newUser.first_name,
+          username: newUser.username
+        }, generatedPassword, newUser.phone);
+      } catch (whatsappError) {
+        // El error ya se loguea dentro de sendWelcomeWhatsApp
+        console.error("Fallo el envío del mensaje de bienvenida por WhatsApp, pero el usuario fue creado:", whatsappError.message);
+      }
     }
 
     // Redirigir al login con un mensaje de éxito (idealmente con connect-flash)
