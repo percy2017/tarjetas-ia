@@ -1,88 +1,193 @@
- // Almacenar el contenido generado por la IA
-let currentGeneratedHTML = null;
-let currentGeneratedCSS = null;
-let currentGeneratedJS = null;
-let currentPrompt = $("#prompt").val(); // Guardar el prompt inicial o cargado
+// Variables globales para el contenido manual (reemplazan a las de IA por ahora)
+// let currentGeneratedHTML = null; // Ya no se usa para la previsualización manual directa
+// let currentGeneratedCSS = null;
+// let currentGeneratedJS = null;
+// let currentPrompt = $("#prompt").val(); // El prompt de IA no se usa por ahora
+// let currentTokensCost = 0; 
 
-// Actualizar el prompt actual si el usuario lo cambia
-$("#prompt").on("input", function() {
-    currentPrompt = $(this).val();
-});
+// --- INICIO: Nuevo código para flujo manual ---
 
-// Manejar el envío del prompt a la IA
-$("form[action='/admin/previsualizador']").on("submit", function(event) {
-    event.preventDefault();
-    currentPrompt = $("#prompt").val(); // Asegurarse de tener el último prompt
-    const formData = new FormData(this);
-    $("#sendPromptBtn").prop("disabled", true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generando...');
+function loadExampleData() {
+    console.log('loadExampleData: Iniciando carga de datos de ejemplo...');
+    try {
+        $('#pageTitle').val('Tarjeta de Ejemplo - AutoCargada');
+        $('#themeMode').val('dark');
+        $('#metaDescription').val('Esta es una tarjeta de ejemplo con datos cargados automáticamente para facilitar las pruebas.');
+    $('#ogImageUrl').val('https://via.placeholder.com/1200x630/007bff/ffffff?text=OG+Ejemplo');
+    $('#faviconUrl').val('https://via.placeholder.com/32x32/007bff/ffffff?text=Fv');
+    $('#navBrandText').val('Marca Ejemplo');
+    $('#navItemsHtml').val(
+        '<li class="nav-item"><a class="nav-link active" href="#">Inicio Ejemplo</a></li>\n' +
+        '<li class="nav-item"><a class="nav-link" href="#seccion1">Sección 1</a></li>\n' +
+        '<li class="nav-item"><a class="nav-link" href="#seccion2">Sección 2</a></li>'
+    );
+    $('#mainSectionsHtml').val(
+        '<div id="seccion1" class="container py-4 text-center">\n' +
+        '  <h1>Contenido Principal de Ejemplo</h1>\n' +
+        '  <p>Este es el contenido principal autogenerado para la tarjeta.</p>\n' +
+        '  <img src="https://via.placeholder.com/600x300/6c757d/ffffff?text=Imagen+Ejemplo" class="img-fluid my-3" alt="Ejemplo"/>\n' +
+        '</div>\n' +
+        '<div id="seccion2" class="container py-4 bg-light text-center">\n' +
+        '  <h2>Otra Sección de Ejemplo</h2>\n' +
+        '  <p>Más contenido de prueba aquí.</p>\n' +
+        '</div>'
+    );
+    $('#footerText').val('&copy; 2025 Pruebas Inc. Todos los derechos reservados.');
+    $('#customStyles').val(
+        'body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }\n' +
+        '.container h1 { color: #0056b3; }\n' +
+        '#seccion2 { border-top: 2px solid #dee2e6; }'
+    );
+    $('#customScripts').val("console.log('Scripts de ejemplo ejecutados para la tarjeta.');\nconsole.log('Datos de ejemplo cargados y previsualizados (alerta eliminada).');");
     
-    fetch("/admin/previsualizador", {
-        method: "POST",
-        body: new URLSearchParams(formData) // Enviar como form data
-    })
-    .then(response => {
+        console.log('loadExampleData: Intento de carga de datos de ejemplo finalizado.');
+    } catch (e) {
+        console.error('loadExampleData: Error durante la carga de datos de ejemplo:', e);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOMContentLoaded: Evento disparado.'); // <-- Log añadido
+    let baseTemplateLoaded = false;
+    // 1. Cargar plantilla base en el iframe al iniciar
+    try {
+        console.log('DOMContentLoaded: Intentando cargar plantilla base en iframe...'); // <-- Log añadido
+        const response = await fetch('/templates/digital-card-v1/index.html'); // URL pública de la plantilla
         if (!response.ok) {
-            return response.json().then(err => { throw err; });
+            throw new Error(`Error al cargar plantilla base: ${response.status} ${response.statusText}`);
         }
-        return response.json();
-    })
-    .then(data => {
-        $("#sendPromptBtn").prop("disabled", false).html("Enviar Prompt a IA");
-        if (data.success && data.generatedContent) {
-            currentGeneratedHTML = data.generatedContent.html_code || "";
-            currentGeneratedCSS = data.generatedContent.css_code || "";
-            currentGeneratedJS = data.generatedContent.js_code || "";
-
-            // Eliminar enlaces a styles.css y script.js del HTML base antes de escribir en el iframe
-            currentGeneratedHTML = currentGeneratedHTML.replace(/<link\s+rel="stylesheet"\s+href="styles\.css"[^>]*>/gi, '');
-            currentGeneratedHTML = currentGeneratedHTML.replace(/<script\s+src="script\.js"[^>]*><\/script>/gi, '');
-
-            const iframe = document.getElementById("previewIframe");
-            const iframeDoc = iframe.contentWindow.document;
+        const baseHtml = await response.text();
+        const iframe = document.getElementById('previewIframe');
+        if (iframe) {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
             iframeDoc.open();
-            iframeDoc.write(currentGeneratedHTML); // Escribir solo el HTML base primero
-
-            // Añadir CSS de forma más segura
-            if (currentGeneratedCSS) {
-                const styleEl = iframeDoc.createElement('style');
-                styleEl.textContent = currentGeneratedCSS;
-                iframeDoc.head.appendChild(styleEl);
-            }
-
-            // Añadir JS
-            if (currentGeneratedJS) {
-                const scriptEl = iframeDoc.createElement('script');
-                scriptEl.textContent = currentGeneratedJS;
-                iframeDoc.body.appendChild(scriptEl); // O head, dependiendo de cuándo deba ejecutarse
-            }
-            
+            iframeDoc.write(baseHtml);
             iframeDoc.close();
-            $("#saveCardBtn").show();
-            $(".placeholder-content").hide(); // Ocultar placeholder si existe
+            $(".placeholder-content").hide(); // Ocultar placeholder si la carga es exitosa
+            baseTemplateLoaded = true; // Marcar que la plantilla base se cargó
+            console.log('DOMContentLoaded: Plantilla base cargada en iframe.'); // <-- Log añadido
         } else {
-            Swal.fire("Error", data.message || "No se pudo generar el contenido.", "error");
-            $("#saveCardBtn").hide();
+            console.error('DOMContentLoaded: Elemento iframe #previewIframe no encontrado.');
         }
-    })
-    .catch(error => {
-        $("#sendPromptBtn").prop("disabled", false).html("Enviar Prompt a IA");
-        console.error("Error al enviar prompt:", error);
-        let msg = "Error al contactar la IA.";
-        if(error && error.message) msg = error.message;
-        Swal.fire("Error de Conexión", msg, "error");
-        $("#saveCardBtn").hide();
-    });
+    } catch (error) {
+        console.error('DOMContentLoaded: Error cargando plantilla en iframe:', error); // <-- Log mejorado
+        Swal.fire("Error de Carga", "No se pudo cargar la plantilla base en la previsualización.", "error");
+        $(".placeholder-content").show(); // Mostrar placeholder si falla la carga
+    }
+
+    // Si la plantilla base se cargó, proceder a cargar datos de ejemplo y previsualizar
+    if (baseTemplateLoaded) {
+        // console.log('DOMContentLoaded: Plantilla base cargada, llamando a loadExampleData().'); // Desactivada carga automática de ejemplos
+        // loadExampleData(); // Desactivada carga automática de ejemplos
+        
+        // Simular clic en el botón de previsualizar para que los datos de ejemplo se procesen
+        // setTimeout(() => { // Desactivada previsualización automática
+        //     console.log('DOMContentLoaded: Intentando simular clic en #previewManualCardBtn.'); 
+        //     const previewButton = document.getElementById('previewManualCardBtn');
+        //     if (previewButton) {
+        //         previewButton.click();
+        //         console.log('DOMContentLoaded: Previsualización de datos de ejemplo disparada automáticamente.'); 
+        //     } else {
+        //         console.error('DOMContentLoaded: Botón #previewManualCardBtn no encontrado para simular clic.'); 
+        //     }
+        // }, 200); 
+        console.log('DOMContentLoaded: Carga automática de datos de ejemplo y previsualización automática DESACTIVADAS.');
+    } else {
+        console.log('DOMContentLoaded: Plantilla base NO cargada, no se realizarán acciones automáticas.'); // Log ajustado
+    }
+
+    // Lógica para cargar datos si se está editando (ej. ?editCardId=...)
+    // Esto se mantiene conceptualmente, pero los datos se cargarían en los campos del acordeón
+    const urlParams = new URLSearchParams(window.location.search);
+    const editCardId = urlParams.get("editCardId");
+    if (editCardId) {
+        console.log("Modo edición: Cargar datos para tarjeta ID:", editCardId, "en los campos del acordeón.");
+        // Aquí iría la lógica para hacer fetch de los datos de la tarjeta con `editCardId`
+        // y poblar los campos del acordeón: $('#pageTitle').val(data.pageTitle), etc.
+        // Por ahora, solo un log.
+        // fetch(`/admin/cards/data/${editCardId}`).then(res => res.json()).then(cardToEdit => { ... });
+    } else if (urlParams.get("action") === "new") {
+        // Limpiar campos del acordeón si es una tarjeta nueva explícitamente
+        $('#cardCustomizationForm')[0].reset(); // Resetea el formulario del acordeón
+         // El iframe ya se carga con la plantilla base, no es necesario about:blank aquí
+        $("#saveCardBtn").hide(); 
+    }
+
+
+    // 2. Event Listener para el botón "Previsualizar Cambios en Iframe"
+    const previewManualCardBtn = document.getElementById('previewManualCardBtn');
+    if (previewManualCardBtn) {
+        previewManualCardBtn.addEventListener('click', async () => {
+            const formData = {
+                pageTitle: document.getElementById('pageTitle').value,
+                themeMode: document.getElementById('themeMode').value,
+                metaDescription: document.getElementById('metaDescription').value,
+                ogImageUrl: document.getElementById('ogImageUrl').value,
+                faviconUrl: document.getElementById('faviconUrl').value,
+                navBrandText: document.getElementById('navBrandText').value,
+                navItemsHtml: document.getElementById('navItemsHtml').value,
+                mainSectionsHtml: document.getElementById('mainSectionsHtml').value,
+                footerText: document.getElementById('footerText').value,
+                customStyles: document.getElementById('customStyles').value,
+                customScripts: document.getElementById('customScripts').value
+            };
+
+            try {
+                const response = await fetch('/admin/previewer/render-manual', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData),
+                });
+
+                if (!response.ok) {
+                    // Intentar parsear el error si es JSON
+                    try {
+                        const errData = await response.json();
+                        throw new Error(errData.message || `Error del servidor: ${response.statusText}`);
+                    } catch (e) {
+                         throw new Error(`Error del servidor: ${response.statusText} (Respuesta no JSON)`);
+                    }
+                }
+                const processedHtml = await response.text();
+                
+                const iframe = document.getElementById('previewIframe');
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                iframeDoc.open();
+                iframeDoc.write(processedHtml);
+                iframeDoc.close();
+                $("#saveCardBtn").show(); // Mostrar botón de guardar después de previsualizar
+                $(".placeholder-content").hide();
+            } catch (error) {
+                console.error('Error en previsualización manual:', error);
+                Swal.fire("Error de Previsualización", error.message || "No se pudo generar la previsualización.", "error");
+            }
+        });
+    }
 });
+
+// --- FIN: Nuevo código para flujo manual ---
+
+
+// // Actualizar el prompt actual si el usuario lo cambia (SECCIÓN IA - COMENTADA)
+// $("#prompt").on("input", function() {
+//     currentPrompt = $(this).val();
+// });
+
+// // Manejar el envío del prompt a la IA (SECCIÓN IA - COMENTADA)
+// $("form[action='/admin/previsualizador']").on("submit", function(event) { 
+//     // ... (código original de IA omitido por brevedad, pero debería estar comentado o eliminado si no se usa)
+// });
+
 
 // Mostrar modal para guardar tarjeta
 $("#saveCardBtn").on("click", function() {
-    if (!currentGeneratedHTML) {
-        Swal.fire("Atención", "Primero genera contenido con la IA antes de guardar.", "warning");
-        return;
-    }
-    // Si estamos editando, podríamos pre-rellenar el título
-    // const editingCardTitle = ... // Lógica para obtener el título si se está editando
-    // $("#cardTitleInput").val(editingCardTitle || "");
+    // Ya no dependemos de currentGeneratedHTML para el flujo manual
+    // if (!currentGeneratedHTML) { 
+    //     Swal.fire("Atención", "Primero genera contenido con la IA antes de guardar.", "warning");
+    //     return;
+    // }
     new bootstrap.Modal(document.getElementById("cardTitleModal")).show();
 });
 
@@ -94,28 +199,27 @@ $("#confirmSaveCardBtn").on("click", function() {
         return;
     }
 
-    const cardData = {
-        title: cardTitle,
-        html_content: currentGeneratedHTML,
-        css_content: currentGeneratedCSS,
-        js_content: currentGeneratedJS,
-        original_prompt: currentPrompt // Enviar el prompt actual
-    };
-    
-    // Determinar si es POST (nueva) o PUT (actualizar)
-    // Esto necesitaría que se pase `editingCard.id` a la vista si se está editando
-    let method = "POST";
-    let url = "/admin/cards";
-    const editingCardId = $("input[name=editingCardId]").val(); // Asumiendo que tienes un input hidden con este id si editas
-
-    if (editingCardId) { // Lógica para modo edición (a implementar completamente)
-            // method = "PUT";
-            // url = "/admin/cards/" + editingCardId;
-            // Por ahora, la creación es el foco principal
-            console.warn("Modo edición aún no completamente implementado para guardar.");
-            // return; // Descomentar si no se quiere permitir guardar en modo edición aún
+    // Obtener el HTML final del iframe
+    const iframe = document.getElementById('previewIframe');
+    let finalHtmlContent = '';
+    if (iframe && iframe.contentDocument && iframe.contentDocument.documentElement) {
+        finalHtmlContent = iframe.contentDocument.documentElement.outerHTML;
+    } else {
+        Swal.fire("Error", "No se pudo obtener el contenido de la previsualización.", "error");
+        console.error("Error: Iframe o su contenido no está accesible para guardar.");
+        return;
     }
 
+    const cardData = {
+        title: cardTitle, // Título oficial de la tarjeta desde el modal
+        finalHtmlContent: finalHtmlContent // HTML completo del iframe
+        // No se envían los campos individuales del acordeón, ya que el backend reconstruirá la tarjeta
+        // o los guardará si se decide implementar eso en la ruta de guardado.
+        // Por ahora, solo title y el HTML final.
+    };
+    
+    const method = "POST";
+    const url = "/admin/previewer/save-card"; // Nueva URL para guardar la tarjeta manual
 
     fetch(url, {
         method: method,
@@ -125,10 +229,13 @@ $("#confirmSaveCardBtn").on("click", function() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById("cardTitleModal")).hide();
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById("cardTitleModal"));
+            if (modalInstance) {
+                modalInstance.hide();
+            }
             Swal.fire("¡Guardado!", data.message || "Tarjeta guardada exitosamente.", "success")
                 .then(() => {
-                    window.location.href = "/admin/cards"; // Redirigir a la lista de tarjetas
+                    window.location.href = "/admin/cards"; 
                 });
         } else {
             Swal.fire("Error", data.message || "No se pudo guardar la tarjeta.", "error");
@@ -141,30 +248,13 @@ $("#confirmSaveCardBtn").on("click", function() {
 });
 
 // Lógica para cargar tarjeta si se accede con ?editCardId= o ?action=new
-const urlParams = new URLSearchParams(window.location.search);
-const action = urlParams.get("action");
-const editCardId = urlParams.get("editCardId");
+// Esta lógica se movió parcialmente al DOMContentLoaded para la carga inicial de datos de edición.
+// La limpieza para ?action=new también se maneja allí.
 
-if (action === "new") {
-    $("#prompt").val(""); // Limpiar prompt
-    currentGeneratedHTML = null; // Resetear contenido
-    currentGeneratedCSS = null;
-    currentGeneratedJS = null;
-    currentPrompt = "";
-    const iframe = document.getElementById("previewIframe");
-    iframe.src = "about:blank"; // Limpiar iframe
-    $("#saveCardBtn").hide(); // Ocultar botón de guardar hasta que se genere contenido
-    $(".placeholder-content").show();
-} else if (editCardId) {
-    // Aquí iría la lógica para cargar los datos de 
-    console.log("Modo edición: Cargar datos para tarjeta ID:", editCardId);
-        $(".placeholder-content").hide();
-} else {
-    // Carga normal, podría cargar la última tarjeta del usuario si esa es la lógica deseada
-    // o simplemente mostrar el placeholder si previewUrl no está definido.
-    if (!$("#previewIframe").attr("src") || $("#previewIframe").attr("src") === "about:blank") {
-            $(".placeholder-content").show();
-    } else {
-            $(".placeholder-content").hide();
-    }
-}
+// // Código original de manejo de URL params (revisado y parcialmente integrado arriba)
+// const urlParams = new URLSearchParams(window.location.search);
+// const action = urlParams.get("action");
+// const editCardId = urlParams.get("editCardId");
+// if (action === "new") { ... } 
+// else if (editCardId) { ... } 
+// else { ... }

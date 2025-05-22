@@ -5,42 +5,65 @@
     <title><%= title %></title>
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="/css/admin.css">
-    <link rel="stylesheet" href="/css/dark-mode.css">
+    <link rel="stylesheet" href="/css/dark-mode.css"> <!-- Descomentado para activar modo oscuro -->
     <link rel="stylesheet" type="text/css" href="/css/dataTables.dataTables.min.css">
     <link rel="stylesheet" href="/css/sweetalert2.min.css"> <!-- SweetAlert2 CSS -->
     <link href="/css/alpaca.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> <!-- Font Awesome -->
     <%- block('pageStyles') %>
 </head>
-<body>
-    <div class="topbar">
-        <div class="topbar-left">
-            <h2 class="project-name">TarjetasIA</h2>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb" style="background-color: transparent; padding: 0;">
+<body class="admin-body"> <!-- Added class for potential global styling -->
+
+    <!-- Top Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top admin-navbar">
+        <div class="container-fluid">
+            <!-- Toggler/collapsible Button for sidebar -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminSidebar" aria-controls="adminSidebar" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <a class="navbar-brand project-name" href="/admin">TarjetasIA v1.0</a>
+            
+            <!-- <nav aria-label="breadcrumb" class="d-none d-md-block ms-3">
+                <ol class="breadcrumb" style="background-color: transparent; padding: 0; margin-bottom: 0;">
                     <li class="breadcrumb-item"><a href="/admin">Dashboard</a></li>
                     <li class="breadcrumb-item active" aria-current="page"><%= currentPage %></li>
                 </ol>
-            </nav>
-        </div>
-        <div class="topbar-right">
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="darkModeSwitch">
-                <label class="form-check-label" for="darkModeSwitch">Dark Mode</label>
-            </div>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="30px" height="30px" class="rounded-circle user-avatar" id="userAvatar">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-            </svg>
-            <a href="/logout" class="btn btn-outline-danger btn-sm">Salir</a>
-        </div>
-    </div>
+            </nav> -->
 
-    <div id="user-sidebar" class="user-sidebar">
-        <div class="sidebar-header">
-            <h3>Perfil de Usuario</h3>
-            <button id="close-user-sidebar" class="close-button">&times;</button>
+            <!-- Navbar items on the right -->
+            <div class="ms-auto d-flex align-items-center">
+                <div class="form-check form-switch me-3">
+                    <input class="form-check-input" type="checkbox" id="darkModeSwitch">
+                    <label class="form-check-label" for="darkModeSwitch">Dark Mode</label>
+                </div>
+                <div class="dropdown">
+                    <a href="#" role="button" id="userAvatarDropdown" data-bs-toggle="dropdown" aria-expanded="false" class="d-flex align-items-center text-decoration-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="30px" height="30px" class="rounded-circle user-avatar-icon">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                        <% if (currentUser && currentUser.username) { %>
+                            <span class="ms-2 d-none d-lg-inline text-dark"><%= currentUser.username %></span>
+                        <% } %>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userAvatarDropdown">
+                        <li><a class="dropdown-item" href="#" id="viewProfileLink">Ver Perfil</a></li>
+                        <li><a class="dropdown-item" href="/admin/profile/edit">Editar Perfil</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/logout">Salir</a></li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="sidebar-body">
+    </nav>
+
+    <!-- User Profile Offcanvas (replaces old user-sidebar div) -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="userProfileOffcanvas" aria-labelledby="userProfileOffcanvasLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="userProfileOffcanvasLabel">Perfil de Usuario</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
             <div id="user-avatar-image-container" class="text-center mb-3">
                 <!-- El avatar se insertará aquí por JS si existe avatar_url -->
             </div>
@@ -55,42 +78,50 @@
         </div>
     </div>
 
-    <div class="container-fluid">
-        <div class="row">
-            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
-                <div class="sidebar-sticky">
-                    <ul class="nav flex-column">
-                        <% if (adminMenuItems && adminMenuItems.length > 0) { %>
-                            <% adminMenuItems.forEach(function(item) { %>
-                                <% if (!item.parent_id) { %>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="<%= item.path %>">
-                                            <% if (item.icon_class) { %>
-                                                <i class="<%= item.icon_class %> me-2"></i>
-                                            <% } %>
-                                            <%= item.title %>
-                                        </a>
-                                    </li>
-                                <% } %>
-                            <% }); %>
-                        <% } else { %>
+    <!-- Main Sidebar (Offcanvas for small screens, fixed for larger) -->
+    <!-- Replaces the old <nav class="col-md-2 d-none d-md-block bg-light sidebar"> -->
+    <div class="offcanvas-lg offcanvas-start admin-sidebar bg-light" tabindex="-1" id="adminSidebar" aria-labelledby="adminSidebarLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="adminSidebarLabel">Menú Principal</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" data-bs-target="#adminSidebar" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column p-0">
+            <ul class="nav flex-column">
+                <% if (adminMenuItems && adminMenuItems.length > 0) { %>
+                    <% adminMenuItems.forEach(function(item) { %>
+                        <% if (!item.parent_id) { %>
                             <li class="nav-item">
-                                <span class="nav-link text-muted">No hay menú disponible.</span>
-                            </li>
-                        <% } %>
-                        <!-- Enlace al editor de menú siempre disponible para admins (o según se defina) -->
-                        <% if (currentUser && currentUser.role === 'admin') { %>
-                            <li class="nav-item mt-3 border-top pt-3">
-                                <a class="nav-link" href="/admin/menu-editor">
-                                    <i class="fas fa-edit me-2"></i>
-                                    Editar Menú
+                                <a class="nav-link" href="<%= item.path %>">
+                                    <% if (item.icon_class) { %>
+                                        <i class="<%= item.icon_class %> me-2"></i>
+                                    <% } %>
+                                    <%= item.title %>
                                 </a>
                             </li>
                         <% } %>
-                    </ul>
-                </div>
-            </nav>
-            <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
+                    <% }); %>
+                <% } else { %>
+                    <li class="nav-item">
+                        <span class="nav-link text-muted">No hay menú disponible.</span>
+                    </li>
+                <% } %>
+                <!-- Enlace al editor de menú siempre disponible para admins (o según se defina) -->
+                <% if (currentUser && currentUser.role === 'admin') { %>
+                    <li class="nav-item mt-auto border-top pt-3"> <!-- mt-auto to push to bottom -->
+                        <a class="nav-link" href="/admin/menu-editor">
+                            <i class="fas fa-edit me-2"></i>
+                            Editar Menú
+                        </a>
+                    </li>
+                <% } %>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <!-- Replaces <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4"> -->
+    <main role="main" class="main-content">
+        <div class="container-fluid"> <!-- Added container-fluid for consistent padding -->
                 <% if (locals.successMessage && successMessage.length > 0) { %>
                     <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
                         <%= successMessage %>
@@ -104,9 +135,11 @@
                     </div>
                 <% } %>
                 <%- body %>
-            </main>
-        </div>
-    </div>
+            </div> <!-- Close container-fluid for main content -->
+    </main>
+    <!--</div>--><!-- Removed .row -->
+    <!--</div>--><!-- Removed .container-fluid that wrapped sidebar and main -->
+
     <script type="text/javascript" src="/js/jquery.min.js"></script>
     <script type="text/javascript" src="/js/dataTables.core.js"></script>
     <script type="text/javascript" src="/js/dataTables.dataTables.min.js"></script>
@@ -118,31 +151,43 @@
     <script src="/js/socket-client-setup.js"></script>
     <script>
         const darkModeSwitch = document.getElementById('darkModeSwitch');
-        const body = document.body;
+        const currentBody = document.body; // Renamed to avoid conflict
 
         // Check for saved preference in localStorage
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
-            body.classList.add('dark-mode');
-            darkModeSwitch.checked = true;
+            currentBody.classList.add('dark-mode');
+            if(darkModeSwitch) darkModeSwitch.checked = true;
         }
 
-        darkModeSwitch.addEventListener('change', () => {
-            if (darkModeSwitch.checked) {
-                body.classList.add('dark-mode');
-                localStorage.setItem('theme', 'dark');
-            } else {
-                body.classList.remove('dark-mode');
-                localStorage.setItem('theme', 'light');
-            }
-        });
-
-        // User Sidebar
-        const userAvatar = document.getElementById('userAvatar'); // El SVG de la topbar
-        const userSidebar = document.getElementById('user-sidebar');
-        const closeUserSidebarButton = document.getElementById('close-user-sidebar');
+        if(darkModeSwitch) {
+            darkModeSwitch.addEventListener('change', () => {
+                if (darkModeSwitch.checked) {
+                    currentBody.classList.add('dark-mode');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    currentBody.classList.remove('dark-mode');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        }
         
-        // Elementos de la Sidebar
+        // User Profile Offcanvas
+        const viewProfileLink = document.getElementById('viewProfileLink');
+        const userProfileOffcanvasElement = document.getElementById('userProfileOffcanvas');
+        let userProfileOffcanvas;
+        if (userProfileOffcanvasElement) {
+            userProfileOffcanvas = new bootstrap.Offcanvas(userProfileOffcanvasElement);
+        }
+
+        if (viewProfileLink && userProfileOffcanvas) {
+            viewProfileLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                userProfileOffcanvas.show();
+            });
+        }
+        
+        // Elementos del Offcanvas de Perfil (similar a como estaba antes para user-sidebar)
         const userNameDisplay = document.getElementById('user-name-display');
         const userEmailDisplay = document.getElementById('user-email-display');
         const userUsernameDisplay = document.getElementById('user-username-display');
@@ -153,126 +198,91 @@
         const userCreatedAtDisplay = document.getElementById('user-created-at-display');
         const userAvatarImageContainer = document.getElementById('user-avatar-image-container');
 
-
-        // Acceder a los datos del usuario pasados desde el servidor vía res.locals.currentUser
-        // El middleware en app.js se encarga de poblar currentUser (que será null o un objeto)
-        var currentUser = null; // Inicializar por si acaso
-        try {
-            // JSON.stringify(currentUser) producirá una cadena JSON (ej. '{"name":"admin"}' o 'null')
-            // EJS lo imprimirá. Las comillas simples lo hacen una cadena JS. JSON.parse lo convierte a objeto/null.
-            currentUser = JSON.parse('<%- JSON.stringify(currentUser) %>');
-        } catch (e) {
-            console.error('Error parsing currentUser data:', e);
-            currentUser = {}; // Fallback a objeto vacío en caso de error de parseo
-        }
-        
-        if (currentUser && Object.keys(currentUser).length > 0) {
-            if (userNameDisplay) {
-                const nombreCompleto = `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim();
-                if (nombreCompleto) {
-                    userNameDisplay.textContent = nombreCompleto;
-                } else {
-                    userNameDisplay.textContent = 'N/A'; // O '' si prefieres campo vacío
-                }
-            }
-            if (userEmailDisplay) userEmailDisplay.textContent = currentUser.email || 'N/A';
-            if (userUsernameDisplay) userUsernameDisplay.textContent = currentUser.username || 'N/A';
-            if (userPhoneDisplay) userPhoneDisplay.textContent = currentUser.phone || 'N/A';
-            if (userRoleDisplay) userRoleDisplay.textContent = currentUser.role || 'N/A';
-            if (userTokensUsedDisplay) userTokensUsedDisplay.textContent = currentUser.tokens_used !== undefined ? currentUser.tokens_used.toString() : '0';
-            
-            if (userProfileUrlDisplay && currentUser.profile_slug) {
-                const profileUrl = `/${currentUser.profile_slug}`; // Asumiendo que las rutas de perfil son /:slug
-                userProfileUrlDisplay.href = profileUrl;
-                userProfileUrlDisplay.textContent = profileUrl;
-            } else if (userProfileUrlDisplay) {
-                userProfileUrlDisplay.textContent = 'N/A';
-                userProfileUrlDisplay.removeAttribute('href');
-            }
-
-            if (userCreatedAtDisplay && currentUser.created_at) {
-                try {
-                    userCreatedAtDisplay.textContent = new Date(currentUser.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
-                } catch (e) {
-                    userCreatedAtDisplay.textContent = currentUser.created_at; // Mostrar tal cual si hay error de formato
-                }
-            } else if (userCreatedAtDisplay) {
-                userCreatedAtDisplay.textContent = 'N/A';
-            }
-
-            if (userAvatarImageContainer && currentUser.avatar_url) {
-                const img = document.createElement('img');
-                img.src = currentUser.avatar_url;
-                img.alt = 'Avatar';
-                img.style.width = '80px'; // Ajusta el tamaño como prefieras
-                img.style.height = '80px';
-                img.classList.add('rounded-circle', 'mb-2');
-                userAvatarImageContainer.innerHTML = ''; // Limpiar por si acaso
-                userAvatarImageContainer.appendChild(img);
-            } else if (userAvatarImageContainer) {
-                 // Podrías poner un avatar genérico si no hay URL
-                userAvatarImageContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="80px" height="80px" class="rounded-circle mb-2" style="opacity:0.5;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
-            }
-
-        } else { // Si no hay currentUser o está vacío
-            const fieldsToClear = [userNameDisplay, userEmailDisplay, userUsernameDisplay, userPhoneDisplay, userRoleDisplay, userTokensUsedDisplay, userCreatedAtDisplay];
-            fieldsToClear.forEach(field => {
-                if (field) field.textContent = 'N/A';
-            });
-            if (userProfileUrlDisplay) {
-                userProfileUrlDisplay.textContent = 'N/A';
-                userProfileUrlDisplay.removeAttribute('href');
-            }
-            if (userAvatarImageContainer) {
-                userAvatarImageContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="80px" height="80px" class="rounded-circle mb-2" style="opacity:0.5;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
-            }
-        }
-
-        userAvatar.addEventListener('click', () => {
-            userSidebar.classList.toggle('show');
-        });
-
-        closeUserSidebarButton.addEventListener('click', () => {
-            userSidebar.classList.remove('show');
-        });
-
-        // Set active class on sidebar menu
-        const currentPath = window.location.pathname;
-        const navLinks = document.querySelectorAll('.sidebar .nav-link');
-
-        navLinks.forEach(link => {
-            link.classList.remove('active'); // Remove active class from all links
-            if (link.getAttribute('href') === currentPath) {
-                link.classList.add('active'); // Add active class to the current page's link
-            }
-        });
-    </script>
-
-    <!-- Script para generar dinámicamente el DIV de alerta de perfil incompleto -->
-    <script>
+        // Script para poblar datos del Perfil Offcanvas y Alerta de Perfil Incompleto
         (function() {
-            // Esperar a que el DOM esté completamente cargado
-            document.addEventListener('DOMContentLoaded', function() {
-                var scriptCurrentUser = null;
-                try {
-                    // Asegúrate de que 'currentUser' esté disponible globalmente o pásalo de otra manera si es necesario
-                    // Esta línea asume que el script anterior que define 'currentUser' ya se ejecutó
-                    // o que 'currentUser' se inyecta directamente aquí por EJS.
-                    // Para mayor seguridad, lo volvemos a obtener como en el script del sidebar.
-                    scriptCurrentUser = JSON.parse('<%- JSON.stringify(currentUser) %>');
-                } catch (e) {
-                    console.error('Error parsing currentUser para generar div de alerta:', e);
+            let scriptCurrentUser = null;
+            try {
+                // currentUser puede ser undefined. Si es así, JSON.stringify(undefined || null) es JSON.stringify(null) -> 'null'
+                scriptCurrentUser = JSON.parse('<%- JSON.stringify(currentUser || null) %>');
+            } catch(e) {
+                console.error("Error parsing currentUser:", e);
+                scriptCurrentUser = null; // Fallback
+            }
+            
+            // Poblar datos del perfil en el Offcanvas
+            if (scriptCurrentUser && typeof scriptCurrentUser === 'object' && Object.keys(scriptCurrentUser).length > 0) {
+                if (userNameDisplay) {
+                    const nombreCompleto = `${scriptCurrentUser.first_name || ''} ${scriptCurrentUser.last_name || ''}`.trim();
+                    userNameDisplay.textContent = nombreCompleto || 'N/A';
+                }
+                if (userEmailDisplay) userEmailDisplay.textContent = scriptCurrentUser.email || 'N/A';
+                if (userUsernameDisplay) userUsernameDisplay.textContent = scriptCurrentUser.username || 'N/A';
+                if (userPhoneDisplay) userPhoneDisplay.textContent = scriptCurrentUser.phone || 'N/A';
+                if (userRoleDisplay) userRoleDisplay.textContent = scriptCurrentUser.role || 'N/A';
+                if (userTokensUsedDisplay) userTokensUsedDisplay.textContent = scriptCurrentUser.tokens_used !== undefined ? scriptCurrentUser.tokens_used.toString() : '0';
+                
+                if (userProfileUrlDisplay && scriptCurrentUser.profile_slug) {
+                    const profileUrl = `/${scriptCurrentUser.profile_slug}`; 
+                    userProfileUrlDisplay.href = profileUrl;
+                    userProfileUrlDisplay.textContent = profileUrl;
+                } else if (userProfileUrlDisplay) {
+                    userProfileUrlDisplay.textContent = 'N/A';
+                    userProfileUrlDisplay.removeAttribute('href');
                 }
 
-                if (scriptCurrentUser && typeof scriptCurrentUser === 'object' && scriptCurrentUser !== null) {
-                    var currentPageName = "";
-                    <% if (typeof currentPage !== 'undefined') { %>
-                        currentPageName = <%- JSON.stringify(currentPage) %>;
-                    <% } %>
+                if (userCreatedAtDisplay && scriptCurrentUser.created_at) {
+                    try {
+                        userCreatedAtDisplay.textContent = new Date(scriptCurrentUser.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                    } catch (e) {
+                        userCreatedAtDisplay.textContent = scriptCurrentUser.created_at; 
+                    }
+                } else if (userCreatedAtDisplay) {
+                    userCreatedAtDisplay.textContent = 'N/A';
+                }
 
-                    // No mostrar en la página de edición de perfil
-                    if (currentPageName === "Editar Perfil") { // Ajusta "Editar Perfil" si es necesario
-                        console.log("En página de Editar Perfil, no se genera div de alerta de perfil incompleto.");
+                if (userAvatarImageContainer && scriptCurrentUser && scriptCurrentUser.avatar_url && scriptCurrentUser.avatar_url !== 'null') {
+                    const img = document.createElement('img');
+                    // Corregir la URL del avatar: si no es una URL completa, anteponer '/'
+                    const avatarSrc = scriptCurrentUser.avatar_url.startsWith('http') || scriptCurrentUser.avatar_url.startsWith('/') 
+                                      ? scriptCurrentUser.avatar_url 
+                                      : '/' + scriptCurrentUser.avatar_url;
+                    img.src = avatarSrc;
+                    img.alt = 'Avatar';
+                    img.style.width = '80px'; 
+                    img.style.height = '80px';
+                    img.classList.add('rounded-circle', 'mb-2');
+                    userAvatarImageContainer.innerHTML = ''; 
+                    userAvatarImageContainer.appendChild(img);
+                } else if (userAvatarImageContainer) {
+                    userAvatarImageContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="80px" height="80px" class="rounded-circle mb-2" style="opacity:0.5;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+                }
+            } else { 
+                const fieldsToClear = [userNameDisplay, userEmailDisplay, userUsernameDisplay, userPhoneDisplay, userRoleDisplay, userTokensUsedDisplay, userCreatedAtDisplay];
+                fieldsToClear.forEach(field => {
+                    if (field) field.textContent = 'N/A';
+                });
+                if (userProfileUrlDisplay) {
+                    userProfileUrlDisplay.textContent = 'N/A';
+                    userProfileUrlDisplay.removeAttribute('href');
+                }
+                if (userAvatarImageContainer) {
+                    userAvatarImageContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="80px" height="80px" class="rounded-circle mb-2" style="opacity:0.5;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+                }
+            }
+
+            // Alerta de perfil incompleto
+            document.addEventListener('DOMContentLoaded', function() {
+                let currentPageName = "";
+                try {
+                    // currentPage puede ser undefined. Si es así, JSON.stringify(undefined || "") es JSON.stringify("") -> '""'
+                    currentPageName = JSON.parse('<%- JSON.stringify(currentPage || "") %>');
+                } catch(e) {
+                    console.error("Error parsing currentPage:", e);
+                    currentPageName = ""; // Fallback
+                }
+
+                if (scriptCurrentUser && typeof scriptCurrentUser === 'object' && Object.keys(scriptCurrentUser).length > 0) {
+                    if (currentPageName === "Editar Perfil") { 
                         return;
                     }
 
@@ -291,32 +301,38 @@
                         const alertDiv = document.createElement('div');
                         alertDiv.className = 'alert alert-warning alert-dismissible fade show mt-3';
                         alertDiv.setAttribute('role', 'alert');
-                        
-                        alertDiv.innerHTML = mensajeHtml; // El mensaje ya contiene el HTML del enlace
+                        alertDiv.innerHTML = mensajeHtml; 
                         
                         const closeButton = document.createElement('button');
                         closeButton.type = 'button';
                         closeButton.className = 'btn-close';
                         closeButton.setAttribute('data-bs-dismiss', 'alert');
                         closeButton.setAttribute('aria-label', 'Close');
-                        
                         alertDiv.appendChild(closeButton);
                         
-                        const mainElement = document.querySelector('main[role="main"]');
-                        if (mainElement) {
-                            mainElement.insertBefore(alertDiv, mainElement.firstChild);
-                            console.log("Div de alerta de perfil incompleto insertado en el DOM.");
+                        const mainContentElement = document.querySelector('.main-content .container-fluid');
+                        if (mainContentElement) {
+                            mainContentElement.insertBefore(alertDiv, mainContentElement.firstChild);
                         } else {
-                            console.error("No se encontró el elemento <main> para insertar el div de alerta.");
+                            console.error("No se encontró el elemento .main-content .container-fluid para insertar el div de alerta.");
                         }
-                    } else {
-                        console.log("Perfil completo según scriptCurrentUser, no se generó div de alerta.");
                     }
                 } else {
-                    console.log("No se pudo obtener currentUser para generar div de alerta de perfil incompleto.");
+                     console.log("No se pudo obtener scriptCurrentUser para generar div de alerta de perfil incompleto o está vacío.");
                 }
             });
         })();
+
+        // Set active class on admin sidebar menu
+        const currentPath = window.location.pathname;
+        const adminNavLinks = document.querySelectorAll('#adminSidebar .nav-link');
+
+        adminNavLinks.forEach(link => {
+            link.classList.remove('active'); 
+            if (link.getAttribute('href') === currentPath) {
+                link.classList.add('active'); 
+            }
+        });
     </script>
     <%- block('pageScripts') %>
 </body>

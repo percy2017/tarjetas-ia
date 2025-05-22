@@ -4,26 +4,77 @@ body.dark-mode {
     color: #ffffff;
 }
 
-.dark-mode .topbar {
-    background-color: #343a40;
+/* Navbar (anteriormente topbar) */
+.dark-mode .admin-navbar.navbar-light { /* Bootstrap añade navbar-light por defecto a bg-light */
+    background-color: #343a40 !important; /* Override Bootstrap bg-light */
     color: #ffffff;
 }
-
-.dark-mode .sidebar {
-    background-color: #343a40 !important; /* Added !important to ensure override */
-    box-shadow: inset -1px 0 0 rgba(255, 255, 255, .1);
+.dark-mode .admin-navbar .navbar-brand,
+.dark-mode .admin-navbar .nav-link, /* Para el breadcrumb si usa nav-link */
+.dark-mode .admin-navbar .breadcrumb-item a,
+.dark-mode .admin-navbar .breadcrumb-item.active,
+.dark-mode .admin-navbar .form-check-label,
+.dark-mode .admin-navbar .user-avatar-icon,
+.dark-mode .admin-navbar .text-dark { /* Para el nombre de usuario */
+    color: #ffffff !important;
+}
+.dark-mode .admin-navbar .navbar-toggler-icon {
+    filter: invert(1) grayscale(100%) brightness(200%); /* Para hacer el ícono del toggler blanco */
 }
 
-.dark-mode .sidebar .nav-link {
-    color: #cccccc !important; /* Adjusted color for better visibility */
+
+/* Admin Sidebar (Offcanvas principal) */
+.dark-mode .admin-sidebar.offcanvas-lg,
+.dark-mode .admin-sidebar .offcanvas-header,
+.dark-mode .admin-sidebar .offcanvas-body {
+    background-color: #343a40 !important;
+    color: #ffffff;
+}
+.dark-mode .admin-sidebar .offcanvas-header {
+    border-bottom: 1px solid #454d55;
+}
+.dark-mode .admin-sidebar .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
 }
 
-.dark-mode .sidebar .nav-link.active {
-    color: #ffffff !important; /* Adjusted color for better visibility */
+.dark-mode .admin-sidebar .nav-link {
+    color: #cccccc !important;
+}
+
+.dark-mode .admin-sidebar .nav-link.active {
+    color: #ffffff !important;
     background-color: #454d55;
 }
 
-.dark-mode main {
+/* User Profile Offcanvas */
+.dark-mode #userProfileOffcanvas.offcanvas,
+.dark-mode #userProfileOffcanvas .offcanvas-header,
+.dark-mode #userProfileOffcanvas .offcanvas-body {
+    background-color: #2c3034 !important; /* Un poco diferente para distinguir o igual que admin-sidebar */
+    color: #ffffff;
+}
+.dark-mode #userProfileOffcanvas .offcanvas-header {
+    border-bottom: 1px solid #454d55;
+}
+.dark-mode #userProfileOffcanvas .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+.dark-mode #userProfileOffcanvas .offcanvas-body p,
+.dark-mode #userProfileOffcanvas .offcanvas-body span,
+.dark-mode #userProfileOffcanvas .offcanvas-body strong,
+.dark-mode #userProfileOffcanvas .offcanvas-body a,
+.dark-mode #userProfileOffcanvas .offcanvas-title { /* Para el título del offcanvas también */
+    color: #ffffff !important;
+}
+/* Específico para el SVG del avatar placeholder si es necesario */
+.dark-mode #userProfileOffcanvas .offcanvas-body #user-avatar-image-container svg path {
+    fill: #cccccc; /* Un color claro para el SVG placeholder */
+}
+
+
+/* Main content area */
+.dark-mode .main-content { /* Anteriormente 'main' */
+    background-color: #1a1a1a; /* Para que el fondo del contenido principal también sea oscuro */
     color: #ffffff;
 }
 
@@ -101,28 +152,7 @@ Por ejemplo:
 }
 
 /* Styles for the user profile sidebar in dark mode */
-.dark-mode .user-sidebar {
-    background-color: #2c3034; /* Similar to multimedia-sidebar or #343a40 */
-    color: #ffffff;
-    box-shadow: -2px 0 5px rgba(255, 255, 255, 0.05);
-}
-
-/* Assuming .user-sidebar might also use .sidebar-header and .close-button */
-/* If it has its own specific classes for header and close, they would need to be styled too */
-/* For now, relying on the existing .dark-mode .sidebar-header and .dark-mode .close-button if they are reused */
-
-/* If .user-sidebar has specific text elements, they might need color adjustments */
-/* For example, if there are <p> tags or <h5> for titles: */
-.dark-mode .user-sidebar h5, /* Example for a title */
-.dark-mode .user-sidebar p,
-.dark-mode .user-sidebar div { /* General text content */
-    color: #ffffff;
-}
-
-/* Ensure the close button inside user-sidebar is also white */
-.dark-mode .user-sidebar .close-button { /* If the close button is nested directly */
-    color: #ffffff;
-}
+/* .dark-mode .user-sidebar { ... } /* Reemplazado por #userProfileOffcanvas */
 
 /* Dark mode styles for the new multimedia grid */
 .dark-mode .multimedia-grid-item {

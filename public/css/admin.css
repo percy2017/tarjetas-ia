@@ -4,32 +4,88 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    /* position: fixed; /* This is now handled by Bootstrap's fixed-top on admin-navbar */
+    /* top: 0; */
+    /* left: 0; */
+    /* right: 0; */
+    /* height: 48px; */ /* Navbar height will be default or customized via Bootstrap vars */
+    /* z-index: 1000; */ /* Bootstrap navbar z-index is 1030 by default */
 }
 
-.sidebar {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 100;
-    padding: 48px 0 0;
-    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+/* Styles for the new admin-navbar (replaces .topbar) */
+.admin-navbar {
+    /* Bootstrap's fixed-top already handles position, top, left, right, z-index */
+    /* Height can be customized if needed, but Bootstrap's default is usually fine */
+    box-shadow: 0 .125rem .25rem rgba(0,0,0,.075); /* Optional: add a subtle shadow */
 }
 
-.sidebar-sticky {
-    position: relative;
-    top: 0;
-    height: calc(100vh - 48px);
-    padding-top: .5rem;
-    overflow-x: hidden;
-    overflow-y: auto;
+.admin-navbar .project-name {
+    font-weight: bold;
+    /* font-size: x-large; */
+    /* margin-right: 40px; /* Spacing handled by Bootstrap classes or flexbox */
 }
 
-main {
-    padding-top: 68px; /* Increased padding to compensate for fixed topbar */
-    margin-left: 16.666%; /* Equivalent to col-md-2 in Bootstrap */
-    margin-top: 0; /* Remove margin-top as padding-top is sufficient */
+/* Styles for the new admin-sidebar (Bootstrap Offcanvas) */
+.admin-sidebar {
+    /* For lg screens and up, it behaves like a fixed sidebar */
+    /* position: fixed; /* Handled by .offcanvas-lg */
+    /* top: 0; /* Starts below navbar due to main content padding */
+    /* bottom: 0; */
+    /* left: 0; */
+    /* z-index: 100; /* Below navbar, but above content. Bootstrap handles this. */
+    /* padding: 48px 0 0; /* Padding top will be to clear the navbar */
+    /* box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1); /* Default Bootstrap offcanvas shadow is fine */
+    width: 280px; /* Default Bootstrap offcanvas width, can be customized */
 }
+
+@media (min-width: 992px) { /* lg breakpoint */
+    .admin-sidebar.offcanvas-lg { /* Target specifically when it's in offcanvas-lg mode */
+        position: fixed;
+        top: 56px; /* Assuming navbar height is 56px, adjust if different */
+        height: calc(100vh - 56px); /* Full height minus navbar */
+        transform: none !important; /* Override offcanvas transform for fixed display */
+        visibility: visible !important; /* Ensure it's visible */
+        /* box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1); /* Bootstrap might provide a default shadow */
+        padding-top: 0; /* Reset padding as it's fixed under navbar */
+        width: 250px; /* Desired fixed width */
+        transition: none; /* No transition for fixed sidebar */
+    }
+     /* .admin-sidebar.offcanvas-lg.show { /* This might not be needed if we force visibility */
+        /* transform: none !important; */
+    /* } */
+}
+
+/* Adjust main content area to account for fixed navbar and sidebar */
+.main-content {
+    padding-top: 70px; /* Default Bootstrap navbar height is around 56px. 70px gives some buffer. */
+}
+
+@media (min-width: 992px) { /* lg breakpoint and up */
+    .main-content {
+        margin-left: 250px; /* Should match the width of .admin-sidebar */
+        /* transition: margin-left .3s ease-in-out; /* Smooth transition if sidebar could collapse on large screens too */
+    }
+    /* If the sidebar itself has a transition for collapsing on large screens (not default for offcanvas-lg) */
+    /* .admin-sidebar-collapsed + .main-content {
+        margin-left: 0;
+    } */
+}
+
+
+/* .sidebar-sticky { /* This was for the old sidebar structure */
+    /* position: relative; */
+    /* top: 0; */
+    /* height: calc(100vh - 48px); */
+    /* padding-top: .5rem; */
+    /* overflow-x: hidden; */
+    /* overflow-y: auto; */
+/* } */
+
+/* main { /* Old main, replaced by .main-content */
+    /* padding-top: 68px; */
+    /* margin-left: 16.666%; */
+    /* margin-top: 0; */
+/* } */
 
 /* .multimedia-card { */ /* Original rule - removing as it might conflict with grid item styles */
     /* width: 100%; */
@@ -39,30 +95,50 @@ main {
 
 .multimedia-sidebar {
     position: fixed;
-    top: 48px; /* Adjust to match topbar height, similar to user-sidebar */
+    top: 56px; /* Adjust to match new navbar height (approx) */
     right: 0;
     bottom: 0;
-    width: 300px; /* Adjust as needed */
+    width: 350px; /* Normalizando ancho */
     background-color: #f8f9fa;
-    padding: 20px;
+    /* padding: 20px; /* Se manejará en .sidebar-body o .offcanvas-body */
     box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
     transform: translateX(100%); /* Initially hidden */
     transition: transform 0.3s ease-in-out;
     z-index: 1000;
 }
 
+.multimedia-sidebar .sidebar-body { /* Cuerpo del sidebar de multimedia */
+    padding: 1rem; /* Normalizando padding */
+}
+
 .multimedia-sidebar.show {
     transform: translateX(0);
 }
 
-.sidebar-header {
+/* Estilos comunes para los headers de los sidebars/offcanvas */
+.sidebar-header, 
+#userProfileOffcanvas .offcanvas-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #cccccc;
-    padding-bottom: 10px;
+    /* margin-bottom: 20px; /* Bootstrap offcanvas-header ya tiene padding */
+    /* border-bottom: 1px solid #cccccc; /* Bootstrap offcanvas-header ya tiene borde */
+    /* padding-bottom: 10px; */
 }
+
+/* Estilos para el offcanvas de perfil de usuario */
+#userProfileOffcanvas.offcanvas-end {
+    width: 350px; /* Normalizando ancho */
+    top: 56px; /* Para que empiece debajo de la navbar */
+    height: calc(100vh - 56px); /* Para que ocupe el resto de la altura */
+    /* Bootstrap por defecto le da z-index: 1045, que es más alto que la navbar (1030) */
+    /* Si sigue tapando, podríamos ajustar z-index, pero top y height deberían ser suficientes */
+}
+
+#userProfileOffcanvas .offcanvas-body {
+    padding: 1rem; /* Normalizando padding */
+}
+
 
 .close-button {
     background: none;
@@ -71,31 +147,11 @@ main {
     cursor: pointer;
 }
 
-.topbar {
-    background-color: #f8f9fa;
-    padding: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 48px; /* Adjust to match sidebar padding */
-    z-index: 1000;
-}
+/* .topbar { ... } /* Removed as .admin-navbar replaces it */
+/* .topbar-left { ... } /* Removed */
+/* .project-name { ... } /* Incorporated into .admin-navbar .project-name */
 
-.topbar-left {
-    display: flex;
-    align-items: center;
-}
-
-.project-name {
-    font-weight: bold;
-    margin-right: 40px;
-}
-
-.breadcrumb-placeholder {
+.breadcrumb-placeholder { /* This might still be used or can be removed if breadcrumb is always populated */
     font-size: 0.9rem;
     color: #6c757d;
 }
@@ -109,6 +165,27 @@ main {
     margin-left: 20px;
     cursor: pointer;
 }
+
+/* Estilos para mejorar la alineación de intl-tel-input con Bootstrap form-control */
+.iti--allow-dropdown, .iti {
+    width: 100% !important; /* Forzar el ancho completo */
+    display: block !important; /* Asegurar que se comporte como un bloque */
+}
+
+/* El input dentro de intl-tel-input ya tiene la clase .form-control, 
+   así que Bootstrap debería aplicarle los estilos. 
+   Si no, se podrían añadir estilos específicos aquí para .iti__tel-input */
+/* Ejemplo:
+.iti__tel-input {
+    height: calc(1.5em + .75rem + 2px);
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: .25rem;
+    border: 1px solid #ced4da;
+    width: 100%;
+}
+*/
 
 /* Multimedia Grid Styles */
 .multimedia-grid-item {
@@ -192,23 +269,8 @@ main {
     /* display: none; */ 
 /* } */
 
-.user-sidebar {
-    position: fixed;
-    top: 48px; /* Below the topbar */
-    right: 0;
-    bottom: 0;
-    width: 300px; /* Adjust as needed */
-    background-color: #f8f9fa;
-    padding: 20px;
-    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
-    transform: translateX(100%); /* Initially hidden */
-    transition: transform 0.3s ease-in-out;
-    z-index: 1000;
-}
+/* .user-sidebar { ... } */ /* Clase antigua, ahora se usa #userProfileOffcanvas y .offcanvas */
 
-.user-sidebar.show {
-    transform: translateX(0);
-}
 
 .topbar-right {
     display: flex;

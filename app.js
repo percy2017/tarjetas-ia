@@ -20,6 +20,7 @@ import { generateLlamaCompletion } from './services/aiService.js'; // Importar e
 import adminMenuRouter from './routes/adminMenu.js'; // Importar el router del editor de menú
 import cardsRouter from './routes/cards.js'; // Importar el router de tarjetas
 import profileRouter from './routes/profile.js'; // <--- AÑADIDO para rutas de perfil
+import previewerRoutes from './routes/previewer.js'; // <--- AÑADIDO para rutas del previsualizador
 import flash from 'connect-flash'; // Importar connect-flash
 
 const __filename = fileURLToPath(import.meta.url);
@@ -62,12 +63,6 @@ app.use((req, res, next) => {
   res.locals.warningMessage = req.flash('warningMessage');
 
   if (userForCheck && req.path.startsWith('/admin')) {
-    console.log(`[Perfil Check] Usuario: ${userForCheck.username}`);
-    console.log(`[Perfil Check] First Name: '${userForCheck.first_name}', Empty: ${!userForCheck.first_name}`);
-    console.log(`[Perfil Check] Last Name: '${userForCheck.last_name}', Empty: ${!userForCheck.last_name}`);
-    console.log(`[Perfil Check] Phone: '${userForCheck.phone}', Empty: ${!userForCheck.phone}`);
-    console.log(`[Perfil Check] Avatar URL: '${userForCheck.avatar_url}', Empty: ${!userForCheck.avatar_url || userForCheck.avatar_url === 'null'}`);
-
     if (!userForCheck.first_name || !userForCheck.last_name || !userForCheck.phone || !userForCheck.avatar_url || userForCheck.avatar_url === 'null') {
       console.log(`[Perfil Check] Resultado: Perfil INCOMPLETO para ${userForCheck.username}`);
       res.locals.profileIncomplete = true;
@@ -89,14 +84,6 @@ app.use((req, res, next) => {
   // 3. Asignar otros mensajes flash estándar a res.locals
   res.locals.successMessage = req.flash('successMessage');
   res.locals.errorMessage = req.flash('errorMessage');
-  // res.locals.warningMessage ya fue asignado arriba, combinando flash y lógica de perfil incompleto.
-
-  // 4. Logs de depuración para los mensajes que se pasarán a la vista
-  console.log("[Flash Check] successMessage para la vista:", res.locals.successMessage);
-  console.log("[Flash Check] errorMessage para la vista:", res.locals.errorMessage);
-  console.log("[Flash Check] warningMessage (final para la vista):", res.locals.warningMessage);
-  console.log("[Direct Warning Check] displaySpecificWarning (interno):", res.locals.displaySpecificWarning);
-  
   next();
 });
 
@@ -339,6 +326,7 @@ app.post('/admin/configuracion/secciones/crear', requireLogin, async (req, res) 
 // El adminMenuRouter debe ir DESPUÉS de las rutas específicas de /admin/*
 app.use('/admin/cards', requireLogin, cardsRouter); // Rutas para la gestión de tarjetas (asegurar requireLogin)
 app.use('/admin/profile', requireLogin, profileRouter); // <--- AÑADIDO para rutas de perfil
+app.use('/admin/previewer', requireLogin, previewerRoutes); // <--- AÑADIDO para montar rutas del previsualizador
 app.use('/admin', requireLogin, adminMenuRouter); // Rutas para el editor de menú y otras bajo /admin/* (asegurar requireLogin)
 
 

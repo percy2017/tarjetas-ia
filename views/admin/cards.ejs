@@ -3,7 +3,7 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1><%= title %></h1>
-        <a href="/admin/previsualizador?action=new" class="btn btn-success">
+        <a href="/admin/previsualizador" class="btn btn-success">
             + Crear Nueva Tarjeta con IA
         </a>
     </div>
@@ -26,9 +26,10 @@
             <thead>
                 <tr>
                     <th>Título</th>
-                    <th>Slug</th>
-                    <th>Ruta Archivos</th>
-                    <th>Creada</th>
+                    <th>Enlace</th>
+                    <th>Costo Tokens</th>
+                    <th>Estado</th>
+                    <th>Fecha Creación</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -37,22 +38,39 @@
                     <% cards.forEach(function(card) { %>
                         <tr>
                             <td><%= card.title || 'N/A' %></td>
-                            <td><%= card.slug || 'N/A' %></td>
-                            <td><a href="<%= card.file_path ? card.file_path + '/index.html' : '#' %>" target="_blank"><%= card.file_path || 'N/A' %></a></td>
-                            <td><%= new Date(card.created_at).toLocaleDateString() %></td>
                             <td>
-                                <a href="/admin/cards/<%= card.id %>/edit" class="btn btn-primary btn-sm" title="Editar">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <!-- El botón de eliminar podría necesitar JS para confirmación con SweetAlert -->
-                                <form action="/admin/cards/<%= card.id %>?_method=DELETE" method="POST" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta tarjeta?');">
-                                    <button type="submit" class="btn btn-danger btn-sm" title="Eliminar">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                                <a href="<%= card.file_path ? card.file_path + '/index.html' : '#' %>" class="btn btn-info btn-sm" target="_blank" title="Ver Tarjeta">
-                                    <i class="fas fa-eye"></i>
-                                </a>
+                                <% if (card.file_path) { %>
+                                    <a href="/<%= card.file_path %>" target="_blank">/<%= card.file_path %></a>
+                                <% } else { %>
+                                    N/A
+                                <% } %>
+                            </td>
+                            <td><%= card.tokens_cost %></td>
+                            <td>
+                                <% 
+                                let badgeClass = 'bg-secondary';
+                                if (card.status === 'published') badgeClass = 'bg-success';
+                                else if (card.status === 'pending') badgeClass = 'bg-warning';
+                                else if (card.status === 'trash') badgeClass = 'bg-danger';
+                                %>
+                                <span class="badge <%= badgeClass %>"><%= card.status %></span>
+                            </td>
+                            <td><%= new Date(card.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' }) %></td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-card-btn me-1" data-id="<%= card.id %>" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info share-card-btn me-1" 
+                                        data-url="<%= card.file_path ? '/' + card.file_path : '' %>"
+                                        data-title="<%= card.title %>"
+                                        title="Compartir">
+                                    <i class="fas fa-share-alt"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary qr-code-btn" 
+                                        data-url="<%= card.file_path ? '/' + card.file_path : '' %>"
+                                        title="Código QR">
+                                    <i class="fas fa-qrcode"></i>
+                                </button>
                             </td>
                         </tr>
                     <% }); %>
@@ -66,4 +84,21 @@
     </div>
 </div>
 
+<!-- Modal para Código QR -->
+<div class="modal fade" id="qrCodeModal" tabindex="-1" aria-labelledby="qrCodeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="qrCodeModalLabel">Código QR</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="qrcodeCanvas" style="margin: 0 auto; width: 200px; height: 200px;"></div> <!-- Contenedor para el QR -->
+        <p class="mt-2"><small id="qrLinkText" style="word-break: break-all;"></small></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% block('pageScripts').append('<script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>') %>
 <% block('pageScripts').append('<script src="/js/admin-cards.js"></script>') %>

@@ -18,36 +18,55 @@
     <% } %>
 
     <% if (currentUser) { %>
-    <form action="/admin/profile/edit" method="POST">
-        <div class="mb-3">
-            <label for="username" class="form-label">Nombre de Usuario (no editable)</label>
-            <input type="text" class="form-control" id="username" name="username" value="<%= currentUser.username %>" readonly>
-        </div>
-        <div class="mb-3">
-            <label for="email" class="form-label">Correo Electrónico (no editable)</label>
-            <input type="email" class="form-control" id="email" name="email" value="<%= currentUser.email %>" readonly>
-        </div>
-        <div class="mb-3">
-            <label for="first_name" class="form-label">Nombres</label>
-            <input type="text" class="form-control" id="first_name" name="first_name" value="<%= currentUser.first_name || '' %>" required>
-        </div>
-        <div class="mb-3">
-            <label for="last_name" class="form-label">Apellidos</label>
-            <input type="text" class="form-control" id="last_name" name="last_name" value="<%= currentUser.last_name || '' %>" required>
-        </div>
-        <div class="mb-3">
-            <label for="phone" class="form-label">Teléfono</label>
-            <input type="tel" class="form-control" id="phone" name="phone" value="<%= currentUser.phone || '' %>">
-            <small class="form-text text-muted">Incluye el código de país, ej: +59170012345</small>
-        </div>
-        <div class="mb-3">
-            <label for="avatar_url" class="form-label">URL del Avatar</label>
-            <input type="url" class="form-control" id="avatar_url" name="avatar_url" value="<%= currentUser.avatar_url || '' %>" placeholder="https://ejemplo.com/imagen.jpg">
-            <small class="form-text text-muted">Pega la URL completa de una imagen para tu avatar.</small>
+    <form action="/admin/profile/edit" method="POST" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Nombre de Usuario (no editable)</label>
+                    <input type="text" class="form-control" id="username" name="username" value="<%= currentUser.username %>" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="first_name" class="form-label">Nombres</label>
+                    <input type="text" class="form-control" id="first_name" name="first_name" value="<%= currentUser.first_name || '' %>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Correo Electrónico (no editable)</label>
+                    <input type="email" class="form-control" id="email" name="email" value="<%= currentUser.email %>" readonly>
+                </div>
+             
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="phone" class="form-label">Teléfono</label>
+                    <input type="tel" class="form-control" id="phone" name="phone" value="<%= currentUser.phone || '' %>">
+                    <!-- intl-tel-input se inicializará aquí -->
+                </div>
+                <div class="mb-3">
+                    <label for="last_name" class="form-label">Apellidos</label>
+                    <input type="text" class="form-control" id="last_name" name="last_name" value="<%= currentUser.last_name || '' %>" required>
+                </div>
+            
+                <div class="mb-3">
+                    <label for="avatarFile" class="form-label">Avatar</label>
+                    <input type="file" class="form-control" id="avatarFile" name="avatarFile" accept="image/*">
+                    <small class="form-text text-muted">Sube una imagen para tu avatar (JPG, PNG, GIF).</small>
+                    <% if (currentUser.avatar_url && currentUser.avatar_url !== 'null') { %>
+                        <div class="mt-2">
+                            <p>Avatar actual:</p>
+                            <img src="<%= currentUser.avatar_url.startsWith('http') ? currentUser.avatar_url : '/' + currentUser.avatar_url %>" alt="Avatar actual" id="currentAvatarPreview" style="max-width: 100px; max-height: 100px; border-radius: 50%;">
+                        </div>
+                    <% } %>
+                    <div class="mt-2">
+                        <img id="avatarPreview" src="#" alt="Previsualización del nuevo avatar" style="max-width: 100px; max-height: 100px; border-radius: 50%; display: none;">
+                    </div>
+                </div>
+            </div>
         </div>
         
-        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-        <a href="/admin" class="btn btn-secondary">Cancelar</a>
+        <div class="mt-3"> <!-- Contenedor para los botones con un margen superior -->
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <a href="/admin" class="btn btn-secondary">Cancelar</a>
+        </div>
     </form>
     <% } else { %>
         <p>No se pudo cargar la información del usuario. Por favor, <a href="/login">inicia sesión</a> de nuevo.</p>
@@ -58,31 +77,56 @@
 <% block('pageScripts').append('<script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>') %>
 <% block('pageScripts').append(`
 <script>
-  // Inicializar intl-tel-input si el campo de teléfono existe
-  const phoneInputField = document.querySelector("#phone");
-  if (phoneInputField) {
-    try {
-      const phoneInput = window.intlTelInput(phoneInputField, {
-        initialCountry: "auto",
-        geoIpLookup: function(callback) {
-          fetch("https://ipapi.co/json")
-            .then(function(res) { return res.json(); })
-            .then(function(data) { callback(data.country_code); })
-            .catch(function() { callback("us"); });
-        },
-        utilsScript: "/vendor/intl-tel-input/js/utils.js", // Necesario para validación y formato
-      });
-      
-      // Si tienes un formulario, al enviarlo, obtén el número internacional completo
-      // const form = phoneInputField.closest('form');
-      // form.addEventListener('submit', function() {
-      //   const fullNumber = phoneInput.getNumber(); // Esto da el número en formato E.164
-      //   phoneInputField.value = fullNumber; // Actualiza el campo antes de enviar
-      // });
+  document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar intl-tel-input si el campo de teléfono existe
+    const phoneInputField = document.querySelector("#phone");
+    if (phoneInputField) {
+      try {
+        const phoneInput = window.intlTelInput(phoneInputField, {
+          initialCountry: "auto",
+          geoIpLookup: function(callback) {
+            fetch("https://ipapi.co/json")
+              .then(function(res) { return res.json(); })
+              .then(function(data) { callback(data.country_code); })
+              .catch(function() { callback("us"); });
+          },
+          utilsScript: "/vendor/intl-tel-input/js/utils.js", // Necesario para validación y formato
+        });
+        
+        // Opcional: Al enviar el formulario, actualiza el campo con el número internacional
+        const form = phoneInputField.closest('form');
+        if (form) {
+            form.addEventListener('submit', function() {
+                if (phoneInput.isValidNumber()) {
+                    phoneInputField.value = phoneInput.getNumber(); 
+                }
+            });
+        }
 
-    } catch (e) {
-      console.warn("No se pudo inicializar intlTelInput, ¿están los archivos en public/vendor/intl-tel-input/ ?", e);
+      } catch (e) {
+        console.warn("No se pudo inicializar intlTelInput, ¿están los archivos en public/vendor/intl-tel-input/ ?", e);
+      }
     }
-  }
+
+    // Previsualización del avatar
+    const avatarFileInput = document.getElementById('avatarFile');
+    const avatarPreview = document.getElementById('avatarPreview');
+    if (avatarFileInput && avatarPreview) {
+        avatarFileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    avatarPreview.src = e.target.result;
+                    avatarPreview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                avatarPreview.src = '#';
+                avatarPreview.style.display = 'none';
+            }
+        });
+    }
+  });
 </script>
 `) %>

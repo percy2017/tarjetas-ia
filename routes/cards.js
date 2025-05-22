@@ -31,8 +31,8 @@ router.get('/', async (req, res) => {
     try {
         const userCards = await db('cards').where({ user_id: req.session.user.id }).orderBy('created_at', 'desc');
         res.render('admin/cards', {
-            title: 'Mis Tarjetas',
-            currentPage: 'Mis Tarjetas',
+            title: 'Tarjetas',
+            currentPage: 'Tarjetas',
             cards: userCards,
             currentUser: req.session.user
         });
@@ -45,7 +45,8 @@ router.get('/', async (req, res) => {
 
 // POST /admin/cards - Crea una nueva tarjeta
 router.post('/', async (req, res) => {
-    const { title, html_content, css_content, js_content, original_prompt } = req.body; // original_prompt añadido
+    // Añadir tokens_cost a la desestructuración de req.body
+    const { title, html_content, css_content, js_content, original_prompt, tokens_cost } = req.body; 
     const userId = req.session.user.id;
     const userProfileSlug = req.session.user.profile_slug;
 
@@ -97,15 +98,15 @@ router.post('/', async (req, res) => {
             // js_content: js_content,
             // file_path: relativeCardPath, // Eliminado, se construirá dinámicamente
             original_prompt: original_prompt || null, // Guardar el prompt original
-            tokens_cost: 1, // Costo fijo de 1 token por tarjeta creada
+            tokens_cost: parseInt(tokens_cost, 10) || 1, // Usar el costo de tokens recibido, con fallback a 1
             // Otros campos como template_id, settings_json, etc., pueden añadirse después
         };
         await db('cards').insert(newCard);
 
-        // 6. Actualizar tokens_used (ejemplo: cada tarjeta cuesta 1 token)
-        // Esta lógica podría ser más compleja (ej. tokens por IA, etc.)
-        await db('users').where({ id: userId }).increment('tokens_used', 1);
-        req.session.user.tokens_used = (req.session.user.tokens_used || 0) + 1; // Actualizar sesión
+        // 6. Actualizar tokens_used con el costo real
+        const actualTokensCost = parseInt(tokens_cost, 10) || 1;
+        await db('users').where({ id: userId }).increment('tokens_used', actualTokensCost);
+        req.session.user.tokens_used = (req.session.user.tokens_used || 0) + actualTokensCost; // Actualizar sesión
 
         // req.flash('successMessage', 'Tarjeta creada exitosamente.'); // Flash no es ideal para respuestas JSON
         // En su lugar, el frontend manejará el mensaje de éxito de la respuesta JSON.
@@ -120,5 +121,73 @@ router.post('/', async (req, res) => {
 
 
 // Aquí irán las rutas para GET /new, GET /:id/edit, PUT /:id, DELETE /:id
+
+// DELETE /admin/cards/:id - Elimina una tarjeta
+router.delete('/:id', async (req, res) => {
+    const cardId = req.params.id;
+    const userId = req.session.user.id;
+    const userProfileSlug = req.session.user.profile_slug;
+
+    if (!userProfileSlug) {
+        return res.status(400).json({ success: false, message: 'No se pudo determinar el slug del perfil de usuario.' });
+    }
+
+    try {
+        // 1. Obtener la tarjeta para asegurarse de que pertenece al usuario y obtener el card_slug
+        const card = await db('cards').where({ id: cardId, user_id: userId }).first();
+
+        if (!card) {
+            return res.status(404).json({ success: false, message: 'Tarjeta no encontrada o no tienes permiso para eliminarla.' });
+        }
+
+        // 2. Construir la ruta al archivo HTML de la tarjeta usando card.file_path
+        // card.file_path es relativo a 'public', ej: 'cards/luisflorez/asdfasdf.html'
+        // __dirname está en /routes, '..' sube a la raíz del proyecto
+        let cardFilePath = null;
+        if (card.file_path) {
+            cardFilePath = path.join(__dirname, '..', 'public', card.file_path);
+        }
+        
+        // 3. Eliminar el archivo HTML de la tarjeta
+        try {
+            if (cardFilePath && await fs.pathExists(cardFilePath)) {
+                await fs.remove(cardFilePath); // fs.remove de fs-extra puede eliminar archivos o carpetas
+                console.log(`Archivo de tarjeta eliminado: ${cardFilePath}`);
+                
+                // Opcional: Verificar si el directorio del usuario (userProfileSlug) está vacío y eliminarlo.
+                // const userDirPath = path.dirname(cardFilePath);
+                // const filesInUserDir = await fs.readdir(userDirPath);
+                // if (filesInUserDir.length === 0) {
+                //     await fs.remove(userDirPath);
+                //     console.log(`Directorio de usuario vacío eliminado: ${userDirPath}`);
+                // }
+
+            } else {
+                console.log(`El archivo de la tarjeta no existía o file_path no definido: ${cardFilePath || 'file_path no definido en la BD'}`);
+            }
+        } catch (fsError) {
+            console.error(`Error al eliminar el archivo de la tarjeta ${cardFilePath}:`, fsError);
+            // Continuar para eliminar de la BD de todas formas, pero loguear el error.
+        }
+
+        // 4. Eliminar la tarjeta de la base de datos
+        const deletedCount = await db('cards').where({ id: cardId, user_id: userId }).del();
+
+        if (deletedCount > 0) {
+            // Opcional: Revertir tokens_used si es necesario
+            // await db('users').where({ id: userId }).decrement('tokens_used', card.tokens_cost || 1);
+            // req.session.user.tokens_used = Math.max(0, (req.session.user.tokens_used || 0) - (card.tokens_cost || 1));
+            
+            res.json({ success: true, message: 'Tarjeta eliminada exitosamente.' });
+        } else {
+            // Esto no debería suceder si la encontramos antes, pero es una salvaguarda.
+            res.status(404).json({ success: false, message: 'Tarjeta no encontrada para eliminar de la base de datos.' });
+        }
+
+    } catch (error) {
+        console.error(`Error al eliminar la tarjeta ${cardId}:`, error);
+        res.status(500).json({ success: false, message: 'Error interno del servidor al eliminar la tarjeta.' });
+    }
+});
 
 export default router;

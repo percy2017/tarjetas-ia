@@ -114,6 +114,32 @@ router.get('/menu-editor/items/:id', async (req, res) => {
     }
 });
 
+// PUT /admin/menu-editor/items/reorder - Reordena los ítems del menú
+// ESTA RUTA DEBE IR ANTES DE LA RUTA /items/:id para que no sea interpretada como un ID
+router.put('/menu-editor/items/reorder', async (req, res) => {
+    const { items } = req.body; // Se espera un array de objetos: [{ id: X, display_order: Y }, ...]
+
+    if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ success: false, message: 'Se requiere una lista de ítems para reordenar.' });
+    }
+
+    try {
+        await db.transaction(async trx => {
+            const queries = items.map(item => {
+                return db('admin_menu_items')
+                    .where('id', item.id)
+                    .update({ display_order: item.display_order })
+                    .transacting(trx);
+            });
+            await Promise.all(queries);
+        });
+        res.json({ success: true, message: 'Orden de los ítems actualizado correctamente.' });
+    } catch (error) {
+        console.error('Error al reordenar los ítems del menú:', error);
+        res.status(500).json({ success: false, message: 'Error interno del servidor al reordenar los ítems.' });
+    }
+});
+
 // PUT /admin/menu-editor/items/:id - Actualiza un ítem de menú existente
 router.put('/menu-editor/items/:id', async (req, res) => {
     const { id } = req.params;

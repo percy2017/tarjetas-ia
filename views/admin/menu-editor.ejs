@@ -73,7 +73,7 @@
                         <label for="addItemRoles" class="form-label">Roles Permitidos (separados por coma)</label>
                         <input type="text" class="form-control" id="addItemRoles" name="roles" placeholder="admin,client">
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3 d-none"> <!-- Ocultar campo de orden -->
                         <label for="addItemOrder" class="form-label">Orden de Visualización</label>
                         <input type="number" class="form-control" id="addItemOrder" name="display_order" value="0">
                     </div>
@@ -81,10 +81,10 @@
                         <label for="addItemIcon" class="form-label">Clase del Icono (ej: fas fa-home)</label>
                         <input type="text" class="form-control" id="addItemIcon" name="icon_class" placeholder="fas fa-link">
                     </div>
-                     <div class="mb-3">
+                     <!-- <div class="mb-3">
                         <label for="addItemParentId" class="form-label">ID del Padre (para submenús, opcional)</label>
                         <input type="number" class="form-control" id="addItemParentId" name="parent_id" placeholder="Dejar vacío si es principal">
-                    </div>
+                    </div> -->
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -118,7 +118,7 @@
                         <label for="editItemRoles" class="form-label">Roles Permitidos (separados por coma)</label>
                         <input type="text" class="form-control" id="editItemRoles" name="roles">
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3 d-none"> <!-- Ocultar campo de orden -->
                         <label for="editItemOrder" class="form-label">Orden de Visualización</label>
                         <input type="number" class="form-control" id="editItemOrder" name="display_order">
                     </div>
@@ -126,10 +126,10 @@
                         <label for="editItemIcon" class="form-label">Clase del Icono</label>
                         <input type="text" class="form-control" id="editItemIcon" name="icon_class">
                     </div>
-                    <div class="mb-3">
+                    <!-- <div class="mb-3">
                         <label for="editItemParentId" class="form-label">ID del Padre</label>
                         <input type="number" class="form-control" id="editItemParentId" name="parent_id">
-                    </div>
+                    </div> -->
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -140,4 +140,5 @@
     </div>
 </div>
 
+<% block('pageScripts').append('<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>') %>
 <% block('pageScripts').append('<script src="/js/admin-menu-editor.js"></script>') %>

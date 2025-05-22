@@ -2,254 +2,216 @@
 
 ## 1. Resumen General del Proyecto
 
-"TarjetasIA" es una aplicación web desarrollada con Node.js y Express.js, diseñada para la creación y gestión de tarjetas digitales (posiblemente de presentación, invitaciones, etc.), con un panel de administración para gestionar diversas funcionalidades. La aplicación ha sido recientemente dockerizada para su despliegue en un VPS.
+"TarjetasIA" es una aplicación web desarrollada con Node.js y Express.js, diseñada para la creación y gestión de tarjetas digitales, con un panel de administración para gestionar diversas funcionalidades.
 
 ## 2. Tecnologías Principales Utilizadas
 
 *   **Backend:** Node.js, Express.js
 *   **Frontend (Vistas):** EJS (Embedded JavaScript templates) con el motor `ejs-mate` para layouts.
 *   **Estilos:** Bootstrap 5, CSS personalizado.
-*   **JavaScript Frontend:** jQuery, DataTables, SweetAlert2, Bootstrap JS, **AlpacaJS**, **Handlebars.js** (dependencia de AlpacaJS), **intl-tel-input**.
+*   **JavaScript Frontend:** jQuery, DataTables, SweetAlert2, Bootstrap JS, **AlpacaJS**, **Handlebars.js** (dependencia de AlpacaJS), **intl-tel-input**, **SortableJS**.
 *   **Gestión de Sesiones:** `express-session` (actualmente con `MemoryStore`).
 *   **Mensajes Flash:** `connect-flash`.
-*   **Subida de Archivos:** `multer`.
+*   **Subida de Archivos:** `multer`, `fs-extra`.
 *   **Variables de Entorno (Desarrollo):** `dotenv`.
 *   **Base de Datos:** MySQL, con gestión de esquemas y seeds mediante **Knex.js**.
 *   **Hashing de Contraseñas:** **bcryptjs**.
 *   **Generación de Contraseñas:** `generate-password`.
 *   **Envío de Correos:** `Nodemailer`.
 *   **Comunicación en Tiempo Real:** **Socket.IO**.
-*   **Integración API Externa (WhatsApp):** `axios` para interactuar con Evolution API.
+*   **Integración API Externa (IA y WhatsApp):** `axios` para interactuar con LLMAPI y Evolution API.
 *   **Contenerización y Despliegue:** Docker, Docker Compose.
 
-## 3. Estado Actual del Proyecto (Actualizado)
+## 3. Estado Actual del Proyecto (Revisión Mayor)
 
-El proyecto cuenta con una landing page y un sistema de **login y registro de usuarios (roles 'admin' y 'client')**. Durante el registro, se genera automáticamente un `profile_slug` para el usuario. El panel de administración (`/admin`) es accesible por usuarios logueados, con ciertas secciones restringidas por rol.
+El proyecto ha experimentado avances significativos en la interfaz de usuario del panel de administración, la gestión de perfiles, la edición de menús, la gestión de tarjetas y la integración con la API de IA para el control de tokens.
 
-Se ha implementado un **editor de menús dinámico** (`/admin/menu-editor`, accesible solo por 'admin') que permite el CRUD completo de ítems de menú. El menú lateral del panel de administración (`views/layouts/adminLayout.ejs`) ahora se genera dinámicamente basado en estos ítems y los roles del usuario actual.
+### 3.1. Mejoras en el Layout del Panel de Administración
+*   **Refactorización a Layout Responsivo (`views/layouts/adminLayout.ejs`, `public/css/admin.css`):**
+    *   La `topbar` y el `sidebar` estático anteriores se han transformado en una `navbar` de Bootstrap 5 (`.admin-navbar.fixed-top`) y un `offcanvas` lateral (`.admin-sidebar.offcanvas-lg.offcanvas-start`).
+    *   Esto asegura que el menú principal sea responsivo, colapsándose en un menú tipo "hamburguesa" en pantallas pequeñas y mostrándose como una barra lateral fija en pantallas grandes.
+    *   El perfil de usuario se ha movido a un `offcanvas` separado (`#userProfileOffcanvas.offcanvas-end`), accesible desde un dropdown en la navbar.
+    *   Se realizaron múltiples ajustes CSS para el correcto posicionamiento, dimensiones (`width`, `height`, `top`, `padding-top`, `margin-left`) de la navbar, los offcanvas y el área de contenido principal (`.main-content`) para asegurar una visualización consistente y evitar solapamientos.
+    *   Se corrigieron errores de JavaScript en `adminLayout.ejs` relacionados con la carga y el parseo de `currentUser` y `currentPage` para la lógica de visualización y alertas.
+    *   Se solucionaron problemas con la aplicación del modo oscuro a los nuevos componentes del layout, actualizando los selectores en `public/css/dark-mode.css`.
+    *   Se normalizaron las dimensiones (ancho a `350px`, padding interno a `1rem`) y el posicionamiento vertical de los sidebars de multimedia y perfil de usuario para una apariencia unificada.
 
-Se ha comenzado la implementación de la **gestión de tarjetas digitales (`cards`)**:
-*   La tabla `cards` en la base de datos incluye campos para `original_prompt` y `tokens_cost`.
-*   El flujo de creación de tarjetas se inicia desde el Previsualizador (`/admin/previsualizador`):
-    *   El usuario ingresa un prompt, la IA genera contenido (HTML, CSS, JS).
-    *   El servicio `aiService.js` parsea la respuesta de la IA (JSON o string con formato de objeto JS) de forma robusta.
-    *   La ruta `POST /admin/previsualizador` en `app.js` devuelve el contenido generado como JSON al frontend.
-    *   El frontend (`views/previsualizador.ejs` y su JS) muestra el contenido en un iframe y permite al usuario guardarlo como una nueva tarjeta.
-    *   Al guardar, se envían el título, prompt y contenido a `POST /admin/cards`.
-    *   La ruta `POST /admin/cards` (en `routes/cards.js`) crea un directorio único (`public/cards/:profile_slug/:card_slug/`), guarda los archivos HTML/CSS/JS, registra la tarjeta en la BD (con `original_prompt` y `tokens_cost` fijo en 1 por ahora), y actualiza `users.tokens_used`.
-*   Se ha creado una página `/admin/cards` para listar las tarjetas del usuario, utilizando DataTables para la visualización.
+### 3.2. Mejoras en el Editor de Menú del Panel (`/admin/menu-editor`)
+*   **Archivos Modificados:** `views/admin/menu-editor.ejs`, `public/js/admin-menu-editor.js`, `routes/adminMenu.js`.
+*   **Ocultar Campo de Orden:** El campo "Orden de Visualización" se ha ocultado de los formularios modales de añadir y editar ítems de menú (usando la clase `d-none` de Bootstrap). El valor por defecto (`0`) se sigue enviando al crear.
+*   **Funcionalidad Drag & Drop:**
+    *   Se integró la librería **SortableJS** (vía CDN) para permitir reordenar los ítems del menú mediante arrastrar y soltar en la lista.
+    *   En `public/js/admin-menu-editor.js`, se inicializó SortableJS y se añadió lógica para que, al finalizar el arrastre (`onEnd`), se envíe una lista de los ítems (ID y nuevo índice como `display_order`) al backend.
+    *   En `routes/adminMenu.js`, se añadió una nueva ruta `PUT /menu-editor/items/reorder` que recibe la lista ordenada y actualiza los `display_order` de los ítems en la base de datos dentro de una transacción.
+    *   Se corrigió un error de enrutamiento en Express donde la ruta `PUT /items/:id` interceptaba la llamada a `PUT /items/reorder`. La ruta `/reorder` se movió para definirse antes que la ruta parametrizada.
 
-**Desafíos y Soluciones Implementadas:**
-*   **Errores de Sintaxis EJS con `block('pageScripts').append()`:** Se encontraron problemas recurrentes al intentar incrustar bloques de JavaScript complejos directamente en las plantillas EJS usando `ejs-mate`. La solución más efectiva fue externalizar estos scripts a archivos `.js` separados (ej. `public/js/admin-menu-editor.js`, `public/js/admin-cards-datatable.js`) y luego enlazarlos en la plantilla con `<% block('pageScripts').append('<script src="/ruta/al/script.js"></script>') %>`. Esto evitó los errores de parseo de EJS.
-*   **Parseo de Respuesta de IA:** La respuesta de la API de Llama a veces no era un JSON estrictamente válido (contenía backticks). Se implementó una lógica de parseo más robusta en `services/aiService.js` que intenta `JSON.parse()` y, como fallback, usa expresiones regulares.
-*   **Errores 403 en Previsualizador:** Se solucionaron eliminando las etiquetas `<link rel="stylesheet" href="styles.css">` y `<script src="script.js"></script>` del HTML generado por la IA antes de inyectarlo en el iframe del previsualizador.
-*   **Gestión de Rutas y Middlewares:** Se ajustó el orden de definición de rutas en `app.js` para asegurar que las rutas específicas (ej. `/admin/previsualizador`) se manejen antes que los routers más generales (ej. `adminMenuRouter`) para evitar conflictos de middlewares de autorización.
-*   **Dependencias Faltantes:** Se instaló `fs-extra` cuando fue necesario.
-*   **Errores de Referencia:** Se corrigieron errores como `upload is not defined` y `successMessage is not defined` ajustando el orden de definición de variables o la forma de acceder a ellas.
-*   **Error de Ruta de Layout con `ejs-mate`:** Se corrigió un error `ENOENT (No such file or directory)` relacionado con la forma en que las vistas en subdirectorios (ej. `views/admin/`) referenciaban al layout principal. La solución fue cambiar la referencia de `<%- layout('../layouts/adminLayout') %>` a `<%- layout('layouts/adminLayout') %>`, asegurando que la ruta al layout se resuelva correctamente desde el directorio base de `views`.
+### 3.3. Mejoras en la Edición de Perfil de Usuario (`/admin/profile/edit`)
+*   **Archivos Modificados:** `views/admin/edit-profile.ejs`, `public/css/admin.css`, `routes/profile.js`.
+*   **Alineación del Campo de Teléfono:** Se añadieron estilos CSS a `public/css/admin.css` para `.iti--allow-dropdown` y `.iti` para forzar `width: 100%` y `display: block`, mejorando la alineación del campo `intl-tel-input` con otros campos de formulario Bootstrap.
+*   **Subida Directa de Avatar:**
+    *   **Frontend:** El formulario en `views/admin/edit-profile.ejs` ahora tiene `enctype="multipart/form-data"`. El campo de URL de avatar se reemplazó por `<input type="file" name="avatarFile">`. Se añadió previsualización de la imagen actual y de la nueva imagen seleccionada. El script de `intl-tel-input` se mejoró para ejecutarse en `DOMContentLoaded` y actualizar el valor del campo al enviar.
+    *   **Backend (`routes/profile.js`):** Se importó y configuró `multer` para manejar la subida de `avatarFile` a `public/uploads/` con un nombre de archivo único. La ruta `POST /edit` ahora procesa el archivo, elimina el avatar anterior del sistema de archivos (si existe, no es una URL externa y no es el placeholder por defecto), y guarda la nueva ruta relativa (ej. `uploads/nombre_archivo.jpg`) en `users.avatar_url`. La sesión del usuario también se actualiza.
+*   **Visualización del Avatar en Sidebar:** Se corrigió la lógica en `views/layouts/adminLayout.ejs` para construir correctamente la URL del avatar en el sidebar de perfil (`#userProfileOffcanvas`), anteponiendo `/` si la ruta es relativa.
+*   **Formulario en Dos Columnas:** El formulario de edición de perfil se reestructuró usando el sistema de rejilla de Bootstrap (`row` y `col-md-6`) para una mejor presentación en pantallas medianas y grandes.
+*   **Corrección de Errores EJS:** Se solucionó un `SyntaxError: Unexpected token 'else'` en `views/admin/edit-profile.ejs` causado por una estructura condicional incorrecta.
 
-La aplicación se despliega con Docker y está accesible en un VPS.
+### 3.4. Gestión de Tarjetas (`/admin/cards`)
+*   **Archivos Modificados:** `views/admin/cards.ejs`, `public/js/admin-cards.js`, `routes/cards.js`.
+*   **Funcionalidad de Eliminación:**
+    *   **Frontend:** Se añadió un event listener en `public/js/admin-cards.js` a los botones de eliminar (clase `.delete-card-btn`). Se muestra una confirmación con SweetAlert2. Si se confirma, se envía una petición `DELETE` a `/admin/cards/:id`. Tras el éxito, la fila se elimina de DataTables.
+    *   **Vista:** En `views/admin/cards.ejs`, el botón de eliminar ahora es un `<button type="button">` con `data-id` y la clase `.delete-card-btn`, eliminando el formulario anterior.
+    *   **Backend (`routes/cards.js`):** Se implementó la ruta `DELETE /:id`. Verifica la propiedad de la tarjeta, elimina la carpeta de archivos asociada (`public/cards/:profile_slug/:card_slug/`) usando `fs-extra`, y luego elimina el registro de la tarjeta de la base de datos.
+*   **Rutas de Archivos:** Se actualizó `views/admin/cards.ejs` para construir dinámicamente los enlaces a los archivos de las tarjetas usando `currentUser.profile_slug` y `card.slug`.
 
-## 4. Detalle de Funcionalidades Implementadas (Actualizado)
-
-### 4.1. Aplicación Base y Configuración (`app.js`)
-
-*   Servidor Express escuchando en un puerto configurable (default 3000, `process.env.PORT`).
-*   Motor de plantillas EJS configurado con `ejs-mate`.
-*   Servicio de archivos estáticos desde `./public` (y `./node_modules` para algunas librerías de frontend si es necesario, aunque se prefiere copiar a `public/vendor`).
-*   `body-parser` para `urlencoded` form data.
-*   `express-session` configurado con `process.env.SESSION_SECRET`.
-    *   **Advertencia Actual:** Usa `MemoryStore` por defecto, no recomendado para producción.
-*   Configuración de `connect-flash` para mensajes flash.
-*   Middleware global para pasar `currentUser` y mensajes flash (`successMessage`, `errorMessage`) a `res.locals`.
-*   Carga de variables de entorno desde `.env` usando `dotenv` para desarrollo.
-*   Rutas principales definidas:
-    *   `/`: Landing page.
-    *   Rutas de autenticación (`/login`, `/register`, `/logout`) manejadas por `routes/auth.js`.
-    *   Rutas del editor de menú del panel (`/admin/menu-editor`) manejadas por `routes/adminMenu.js`.
-    *   Otras rutas protegidas bajo `/admin/*` usando el middleware `requireLogin`.
-*   **Ruta `POST /admin/previsualizador`:** Utiliza `services/aiService.js`. Lee config de API desde BD (`configs`), envía prompt a la IA. Devuelve el contenido generado (HTML, CSS, JS) como JSON al frontend para previsualización dinámica.
-    *   **Ruta `GET /admin/previsualizador`:** Permite iniciar la creación de una nueva tarjeta (`?action=new`) o (pendiente) cargar una tarjeta existente para editar o la última creada.
-*   **Ruta `POST /admin/configuracion/secciones/crear`:** Creación de nuevas secciones de configuración.
-*   **Rutas para Tarjetas (`routes/cards.js` montado en `/admin/cards`):**
-    *   `GET /`: Lista las tarjetas del usuario actual (usa DataTables).
-    *   `POST /`: Crea una nueva tarjeta, guarda archivos en `public/cards/:profile_slug/:card_slug/`, registra en BD (incluyendo `original_prompt`, `tokens_cost`), y actualiza `users.tokens_used`.
-*   **Rutas para Edición de Perfil (`routes/profile.js` montado en `/admin/profile`):**
-    *   `GET /edit`: Muestra el formulario de edición de perfil.
-    *   `POST /edit`: Procesa la actualización de los datos del perfil del usuario (`first_name`, `last_name`, `phone`, `avatar_url`).
-
-### 4.1.1. Servicios (`services/`) (Actualizado)
+### 3.5. Gestión de Tokens de IA y Flujo del Previsualizador
+*   **Objetivo Principal:** Registrar el costo real de tokens (obtenido de `usage.total_tokens` de la API de IA) en `cards.tokens_cost` y actualizar `users.tokens_used` como un acumulador histórico del gasto total del usuario.
 *   **`services/aiService.js`:**
-    *   Encapsula la lógica de interacción con APIs de IA (Llama).
-    *   Obtiene config de API desde la tabla `configs`.
-    *   Procesa la respuesta de la IA (que puede no ser JSON estricto) de forma robusta, intentando `JSON.parse()` y usando expresiones regulares como fallback para extraer `html_code`, `css_code`, `js_code`.
-*   **`services/notificationService.js` (Actualizado):**
-    *   Función `sendWelcomeEmail(userData, generatedPassword)`:
-        *   Obtiene configuración SMTP de la tabla `configs` (sección `smtp_settings`).
-        *   Utiliza `Nodemailer` para enviar un correo de bienvenida.
-    *   **Nueva Función `sendWelcomeWhatsApp(userData, generatedPassword, whatsappPhoneNumber)`:**
-        *   Obtiene configuración de Evolution API (URL base, API Key) desde la tabla `configs` (sección `evolution_api`).
-        *   Llama al endpoint `/instance/fetchInstances` de Evolution API para obtener instancias activas.
-        *   Itera sobre las instancias activas e intenta enviar un mensaje de bienvenida de WhatsApp a través del endpoint `/message/sendText/{instanceName}`.
-        *   Maneja el éxito o fallo del envío.
-*   **`services/socketService.js` (Nuevo):**
-    *   Encapsula la inicialización y configuración del servidor Socket.IO.
-    *   Maneja conexiones de clientes, desconexiones y eventos básicos.
-    *   Proporciona una función `getIoInstance()` para acceder a la instancia de `io` desde otros módulos (aunque actualmente se pasa `io` a `req` en `app.js`).
+    *   Se realizaron múltiples pruebas y ajustes para obtener una respuesta JSON estructurada y completa de la API `api.llmapi.com`.
+    *   Se probó con los modelos `llama3-8b` y `llama3.1-70b`.
+    *   Se intentó la estrategia de "Function Calling" (con `tools` y `tool_choice` en el payload). Se observó que, aunque la API indicaba `finish_reason: "tool_calls"`, el contenido de `tool_calls[0].function.arguments` (donde se esperaba el JSON con `html_code`, `css_code`, `js_code`) era truncado si el código generado era largo, incluso con `max_tokens` alto. Esto hacía que el JSON de `arguments` fuera inválido.
+    *   **Decisión Actual:** Se descartó "Function Calling" para obtener el JSON completo de código debido al truncamiento. Se volvió a una llamada de chat simple.
+    *   **Implementación Actual en `aiService.js`:**
+        *   El payload ya no incluye `tools` ni `tool_choice`.
+        *   Se espera que la IA devuelva el JSON directamente en `message.content`, guiada por el `systemPrompt`.
+        *   Se añadió lógica para extraer `tokens_cost` de `llamaResponse.data.usage.total_tokens`.
+        *   La función `generateLlamaCompletion` devuelve `{ html_code, css_code, js_code, tokens_cost }`. (Nota: La robustez del parseo del `message.content` para extraer el JSON principal si la IA añade texto extra o usa formatos no estándar como backticks para strings dentro del JSON sigue siendo un punto a monitorear y potencialmente refinar).
+*   **Prompt del Sistema (para `IA_SYSTEM_PROMPT` en la BD):**
+    *   Se realizaron varias iteraciones para instruir a la IA a:
+        1.  Devolver ÚNICAMENTE un objeto JSON.
+        2.  Usar comillas dobles para todos los strings dentro del JSON.
+        3.  Incluir los enlaces `<link rel="stylesheet" href="style.css">` y `<script src="script.js"></script>` en el `html_code`.
+    *   Se probó con entidades HTML (`<`, `>`) y luego describiendo las etiquetas textualmente para evitar problemas de interpretación del prompt por la propia IA o por el sistema de configuración. La versión actual del prompt describe textualmente las etiquetas.
+*   **`app.js` (Ruta `POST /admin/previsualizador`):**
+    *   Recibe el objeto completo de `aiService.js` (incluyendo `tokens_cost`) y lo pasa al frontend.
+*   **`public/js/admin-previsualizador.js`:**
+    *   Almacena el `tokens_cost` recibido del backend en una variable JavaScript (`currentTokenCost`).
+    *   Envía este `currentTokenCost` junto con los demás datos de la tarjeta al guardar (`POST /admin/cards`).
+    *   Se corrigió un error `appendChild` al renderizar en el iframe, asegurando que `iframeDoc.close()` se llame después de `iframeDoc.write()` y antes de manipular `iframeDoc.head` o `iframeDoc.body`.
+*   **`routes/cards.js` (Ruta `POST /` para crear tarjeta):**
+    *   Recibe `tokens_cost` del frontend.
+    *   Guarda este valor (parseado a entero, fallback a 1) en `cards.tokens_cost`.
+    *   Incrementa `users.tokens_used` por este mismo valor, manteniendo `users.tokens_used` como un acumulador histórico del gasto total del usuario.
 
-### 4.2. Vistas y Frontend
+### 3.6. Desafíos y Soluciones Implementadas (Resumen Adicional)
+*   **Truncamiento de Respuesta de IA con "Function Calling":** Se identificó que `api.llmapi.com` (con `llama3.1-70b`) truncaba el string JSON en `tool_calls[0].function.arguments` si el contenido de código era extenso, haciendo esta estrategia inviable para obtener el HTML/CSS/JS completo en una sola estructura de función. Se revirtió a esperar el JSON en `message.content`.
+*   **Errores de Parseo de JSON de la IA:** Se trabajó en refinar el `systemPrompt` y la lógica de parseo en `aiService.js` para manejar respuestas de la IA que no son JSON estrictamente válido (ej. con texto introductorio o formatos de string no estándar).
+*   **Errores de JavaScript en Frontend:** Se corrigieron errores de `appendChild` en el previsualizador y errores de sintaxis EJS en varias plantillas.
 
-*   **`views/index.ejs` (Landing Page):** Sin cambios recientes significativos.
-*   **`views/login.ejs`:**
-    *   Añadido enlace "Regístrate aquí" a `/register`.
-*   **`views/register.ejs` (Nueva Vista):**
-    *   Formulario de registro solicitando Nombres, Apellidos, Correo Electrónico y Teléfono.
-    *   Integración de `intl-tel-input` para el campo de teléfono, con archivos servidos desde `public/vendor/intl-tel-input/`.
-*   **`views/layouts/adminLayout.ejs`:**
-    *   El breadcrumb espera la variable `currentPage`.
-    *   Muestra mensajes flash (`successMessage`, `errorMessage`) obtenidos de `res.locals`.
-*   **`views/admin.ejs` (Dashboard Admin):** Sin cambios recientes significativos.
-*   **`views/layouts/adminLayout.ejs` (Actualizado):**
-    *   El menú lateral se genera dinámicamente a partir de `res.locals.adminMenuItems`.
-    *   Incluye Font Awesome globalmente.
-    *   **Ajuste Visual del Sidebar de Perfil:** Modificado para que el campo "Nombre" muestre "N/A" si `first_name` y `last_name` del usuario están vacíos, en lugar de mostrar el `username` como fallback.
-    *   **Scripts de Socket.IO:** Incluye los scripts necesarios para el cliente Socket.IO (`/socket.io/socket.io.js` y `/js/socket-client-setup.js`).
-    *   **Visualización de Mensajes Flash:** Muestra `successMessage`, `errorMessage` y `warningMessage` (este último para notificaciones generales o de perfil incompleto).
-*   **`views/admin.ejs` (Dashboard Admin):** Sin cambios recientes significativos.
-*   **`views/admin/edit-profile.ejs` (Nueva Vista):**
-    *   Formulario para que el usuario edite `first_name`, `last_name`, `phone` y `avatar_url`.
-    *   Incluye inicialización para `intl-tel-input` en el campo de teléfono.
-*   **`views/previsualizador.ejs` (Actualizado):**
-    *   Maneja la respuesta JSON de la IA para actualizar el iframe dinámicamente.
-    *   Incluye botón "Guardar Tarjeta" y modal para ingresar título.
-    *   Envía datos (título, prompt, HTML, CSS, JS) a `POST /admin/cards`.
-    *   Limpia el HTML de la IA de enlaces a `styles.css` y `script.js` para evitar errores 403 en iframe.
-    *   Maneja el query param `?action=new`.
-*   **`views/multimedia.ejs`:** Sin cambios recientes significativos.
-*   **`views/ventas.ejs`:** Sin cambios recientes significativos.
-*   **`views/configuracion.ejs`:**
-    *   Corregido error de AlpacaJS con campos de tipo `boolean`.
-*   **`views/admin/menu-editor.ejs` (Solucionado y Funcional):**
-    *   Error EJS resuelto externalizando el script a `public/js/admin-menu-editor.js`.
-    *   CRUD completo para ítems de menú implementado (Añadir, Editar, Eliminar).
-*   **`views/admin/cards.ejs` (Nueva Vista):**
-    *   Lista las tarjetas del usuario utilizando DataTables.
-    *   Botón "+ Crear Nueva Tarjeta con IA" enlaza a `/admin/previsualizador?action=new`.
-    *   (Pendiente: Ajustar visualización de "Ruta Archivos" y enlace "Ver").
+### 3.7. Implementación de Flujo de Creación Manual de Tarjetas y Mejoras en Previsualizador (Sesión Actual)
+*   **Cambio de Enfoque en Creación de Tarjetas:** Se transicionó de un modelo donde la IA generaba el HTML/CSS/JS completo a un sistema basado en una plantilla HTML (`public/templates/digital-card-v1/index.html`) con placeholders, permitiendo la entrada manual de contenido y una futura integración granular con la IA por secciones.
+*   **Preparación de la Plantilla Base (`public/templates/digital-card-v1/index.html`):**
+    *   Se implementó un menú desplegable y luego un menú lateral (offcanvas) para mejorar la responsividad.
+    *   Se añadió funcionalidad de "sticky footer".
+    *   Se introdujeron placeholders en formato de comentario HTML (ej. `<!-- PAGE_TITLE -->`, `<!-- THEME_MODE -->`, `<!-- MAIN_SECTIONS_PLACEHOLDER -->`, `<!-- CUSTOM_STYLES_PLACEHOLDER -->`, `<!-- CUSTOM_SCRIPTS_PLACEHOLDER -->`, etc.) para la inyección dinámica de contenido, incluyendo metaetiquetas (descripción, OG image) y favicon.
+*   **Acondicionamiento de la Interfaz del Previsualizador (`views/previsualizador.ejs`):**
+    *   Se ocultaron los elementos de UI relacionados con el prompt de IA para enfocarse en el flujo manual.
+    *   Se implementó un acordeón de Bootstrap para organizar los campos de entrada manual, correspondiendo cada panel del acordeón a una sección de la plantilla base (Configuración General, Navbar, Contenido Principal, Footer, Estilos/Scripts).
+    *   Se añadió un botón "Previsualizar Cambios en Iframe" para actualizar la vista previa.
+*   **Lógica del Backend para Previsualización Manual (`routes/previewer.js`):**
+    *   Se creó el nuevo archivo de rutas `routes/previewer.js`.
+    *   Se implementó la ruta `POST /admin/previewer/render-manual`, protegida por `requireLogin`. Esta ruta:
+        *   Recibe los datos del formulario del acordeón desde el frontend.
+        *   Lee la plantilla base `digital-card-v1.html`.
+        *   Reemplaza todos los placeholders con los datos recibidos.
+        *   Inyecta el CSS personalizado (envuelto en `<style>`) y el JavaScript personalizado (envuelto en `<script>`) directamente en el HTML resultante.
+        *   Devuelve el HTML completo y procesado.
+    *   Este nuevo router se montó en `app.js` bajo la ruta `/admin/previewer`.
+*   **Lógica del Frontend para Previsualización Manual (`public/js/admin-previsualizador.js`):**
+    *   Al cargar la página, se realiza un `fetch` a la URL pública de la plantilla base (`/templates/digital-card-v1/index.html`) y su contenido se carga en el `iframe` de previsualización.
+    *   Se añadió un event listener al botón "Previsualizar Cambios en Iframe" que:
+        *   Recolecta todos los datos de los campos del acordeón.
+        *   Envía estos datos mediante `POST` a la ruta `/admin/previewer/render-manual`.
+        *   Carga el HTML procesado devuelto por el backend en el `iframe`.
+    *   Se desactivó la carga automática de datos de ejemplo y la previsualización automática al inicio para permitir la entrada manual desde cero. La función `loadExampleData()` se mantiene pero no se llama automáticamente.
+*   **Lógica de Guardado para Tarjetas Manuales (Nueva Ruta en `routes/previewer.js`):**
+    *   Se implementó la nueva ruta `POST /admin/previewer/save-card`, protegida por `requireLogin`. Esta ruta:
+        *   Recibe `title` (del modal de guardado) y `finalHtmlContent` (el HTML completo del iframe) desde el frontend.
+        *   Obtiene `userId` y `userProfileSlug` de la sesión.
+        *   Genera un `cardSlug` único.
+        *   Crea el directorio del usuario (`public/cards/USER_PROFILE_SLUG/`) si no existe, usando `fs-extra.ensureDir()`.
+        *   Guarda el `finalHtmlContent` como `CARD_SLUG.html` en ese directorio (ej. `public/cards/luisflorez/mi-tarjeta.html`).
+        *   **NO** crea archivos `style.css` o `script.js` separados, ya que el CSS/JS se asume inline en `finalHtmlContent`.
+*   **Modificación de la Base de Datos (Migración):**
+    *   Se modificó la migración existente `20250520183407_create_cards_table.cjs` para añadir el campo `file_path` (String, nullable) a la tabla `cards`.
+*   **Lógica de Inserción en BD (en `POST /admin/previewer/save-card`):**
+    *   Al guardar una tarjeta, se inserta un registro en la tabla `cards` con `user_id`, `title`, `slug`, `status: 'published'`, y el nuevo `file_path` (ruta relativa al archivo HTML guardado).
+    *   `tokens_cost` se establece en `0`. Otros campos como `original_prompt` y `content_json` usan sus valores por defecto de la BD (probablemente `null`).
+    *   Se corrigió la obtención del `insertedCardId` para ser compatible con MySQL, eliminando el uso de `.returning('id')` en la inserción de Knex y usando el resultado directo.
+*   **Ajuste en Frontend (`public/js/admin-previsualizador.js` para Guardar):**
+    *   Se modificó el event listener de `#confirmSaveCardBtn` para enviar solo `title` y `finalHtmlContent` a la nueva ruta `/admin/previewer/save-card`.
+*   **Ajustes en la Lista de Tarjetas (`views/admin/cards.ejs` y `public/js/admin-cards.js`):**
+    *   **Tabla (`views/admin/cards.ejs`):** Se actualizaron las columnas para mostrar: Título, Enlace (usando el nuevo `card.file_path`), Costo Tokens, Estado y Fecha de Creación.
+    *   **Acciones (`views/admin/cards.ejs`):**
+        *   Se omitió el botón "Editar" por ahora.
+        *   Se mantuvieron/ajustaron los botones para "Eliminar".
+        *   Se añadieron nuevos botones (estructura HTML) para "Compartir" y "Código QR".
+        *   Se incluyó la librería `qrcode.js` vía CDN en la vista.
+    *   **JavaScript (`public/js/admin-cards.js`):**
+        *   Se añadió la lógica básica para el botón "Compartir" (copiar URL de la tarjeta al portapapeles).
+        *   Se añadió la lógica para el botón "Código QR" (generar el QR usando `qrcode.js` con la URL de la tarjeta y mostrarlo en un modal).
+*   **Ajuste en la Lógica de Eliminación (`routes/cards.js` - Ruta `DELETE /:id`):**
+    *   Se modificó para que elimine el archivo HTML individual (`public/CARDS_FILE_PATH`) en lugar de la carpeta completa del slug de la tarjeta.
+*   **Resolución de Problemas:**
+    *   Se diagnosticó y resolvió el error `EPERM mkdir` que ocurría durante el guardado. La solución fue corregir la lógica de creación de rutas en `routes/previewer.js` para que el `cardSlug` sea parte del nombre del archivo (`cardSlug.html`) y no un subdirectorio, asegurando que solo se cree el directorio del `userProfileSlug` (`public/cards/USER_PROFILE_SLUG/`).
+    *   Se eliminó una alerta (`alert()`) innecesaria que aparecía desde los datos de ejemplo en el previsualizador.
 
-### 4.3. Autenticación (`routes/auth.js`) (Actualizado)
-
-*   **Ruta `POST /register`:**
-    *   Genera y guarda un `profile_slug` único.
-    *   Genera `username` único y `password` segura.
-    *   Hashea la contraseña.
-    *   Crea el nuevo usuario en la tabla `users` con `role: 'client'`.
-    *   Llama a `sendWelcomeEmail` de `notificationService.js`.
-    *   **Llama a `sendWelcomeWhatsApp` de `notificationService.js`** para enviar credenciales/bienvenida por WhatsApp.
-    *   Redirige a `/login` con mensaje de éxito.
-*   **Ruta `POST /login`:**
-    *   Modificada para que tanto usuarios con rol `'admin'` como `'client'` sean redirigidos a `/admin` tras un inicio de sesión exitoso.
-*   Ruta GET `/login` y GET `/logout`: Sin cambios funcionales mayores.
-
-### 4.4. Middleware y Configuración Adicional en `app.js`
-*   Middleware global para `currentUser`, mensajes flash (`successMessage`, `errorMessage`), `adminMenuItems` (menú dinámico), y la instancia `io` de Socket.IO (`req.io`).
-    *   Este middleware también incluye lógica para detectar si el perfil del usuario (`first_name`, `last_name`, `phone`, `avatar_url`) está incompleto, considerando también `avatar_url === 'null'` como incompleto.
-*   **Notificación de Perfil Incompleto (Solucionado):**
-    *   Después de varios intentos para pasar un mensaje de advertencia desde el backend (`res.locals.warningMessage`) a la plantilla del layout para ser renderizado como un `div` de Bootstrap, se encontró que esta variable no llegaba consistentemente al layout.
-    *   La solución final implementada consiste en un script del lado del cliente en `views/layouts/adminLayout.ejs` que se ejecuta en `DOMContentLoaded`.
-    *   Este script accede a la variable `currentUser` (que sí está consistentemente disponible en la plantilla, ya que se usa para el sidebar de perfil).
-    *   Verifica los campos del perfil (`first_name`, `last_name`, `phone`, `avatar_url`) directamente desde `currentUser`.
-    *   Si el perfil está incompleto y el usuario no está en la página "Editar Perfil", el script crea dinámicamente un `div` de alerta de Bootstrap (`alert alert-warning`) con el mensaje "Tu perfil está incompleto. Algunos datos son necesarios para generar tus tarjetas correctamente. <a class="alert-link" href="/admin/profile/edit">Haz clic aquí para completarlo</a>." y lo inserta al principio del elemento `<main>` de la página.
-    *   Esto asegura que la notificación se muestre correctamente y el enlace dirija al usuario a la página de edición de perfil.
-*   Añadido `express.json()` para parsear JSON bodies.
-*   Reorganización del orden de rutas.
-*   **Servidor HTTP y Socket.IO:** `app.js` ahora crea un servidor HTTP explícito y lo usa para inicializar Express y Socket.IO, escuchando en el mismo puerto.
-
-### 4.5. Gestión de Menú del Panel (Completado para CRUD básico)
-*   **Rutas (`routes/adminMenu.js`):**
-    *   CRUD completo para ítems de menú (GET, POST para crear, GET para obtener datos para editar, PUT para actualizar, DELETE).
-    *   Middleware `requireAdminRole` para restringir acceso.
-*   **Vista (`views/admin/menu-editor.ejs`):**
-    *   Interfaz para listar, añadir, editar y eliminar ítems de menú, con JavaScript externalizado a `public/js/admin-menu-editor.js`.
-
-### 4.6. Gestión de Tarjetas (En Desarrollo)
-*   **Rutas (`routes/cards.js`):**
-    *   `GET /`: Lista las tarjetas del usuario.
-    *   `POST /`: Crea una nueva tarjeta:
-        *   Recibe título, prompt, HTML, CSS, JS.
-        *   Crea directorio `public/cards/:profile_slug/:card_slug/`.
-        *   Guarda archivos.
-        *   Inserta en BD (con `original_prompt`, `tokens_cost`).
-        *   Actualiza `users.tokens_used`.
-        *   Devuelve respuesta JSON.
-*   **Vista (`views/admin/cards.ejs`):**
-    *   Muestra tarjetas en DataTables.
-    *   Enlaza a previsualizador para crear nuevas.
-*   **Migración (`...create_cards_table.cjs`):**
-    *   Actualizada para incluir `original_prompt` y `tokens_cost`.
-
-## 5. Configuración de Base de Datos (Knex.js) (Actualizado)
-*   **Migraciones (`db/migrations/`):**
-    *   `..._create_users_table.cjs` (asume `profile_slug`).
-    *   `..._create_configs_table.cjs`
-    *   `..._create_cards_table.cjs` (actualizada con `original_prompt`, `tokens_cost`).
-    *   `..._create_admin_menu_items_table.cjs`
-
-## 6. Estructura de Archivos Clave (Actualizado)
-*   `app.js`: Archivo principal.
-*   `routes/auth.js`: Manejo de autenticación y registro (con generación de `profile_slug`).
-*   `routes/adminMenu.js`: CRUD para ítems de menú.
-*   `routes/cards.js`: Gestión de tarjetas.
-*   `routes/profile.js`: (Nuevo) Rutas para edición de perfil de usuario.
-*   `services/aiService.js`: Interacción con IA.
-*   `services/notificationService.js`: Envío de correos y mensajes de WhatsApp.
-*   `services/socketService.js`: (Nuevo) Lógica del servidor Socket.IO.
-*   `views/layouts/adminLayout.ejs`: Layout principal con menú dinámico, scripts de Socket.IO y visualización de mensajes flash.
-*   `views/admin/menu-editor.ejs`: Interfaz del editor de menús.
-*   `views/admin/cards.ejs`: Interfaz para listar tarjetas.
-*   `views/admin/edit-profile.ejs`: (Nueva) Formulario para editar perfil de usuario.
-*   `views/previsualizador.ejs`: Interfaz para generar y previsualizar contenido de IA.
-*   `public/js/admin-menu-editor.js`: JS para el editor de menús.
-*   `public/js/admin-cards.js`: (Asumido, anteriormente `admin-cards-datatable.js`) JS para la lista de tarjetas.
-*   `public/js/admin-previsualizador.js`: JS para el previsualizador.
-*   `public/js/socket-client-setup.js`: (Nuevo) Configuración del cliente Socket.IO.
-
-## 7. Configuración de Despliegue (Docker)
-*   Considerar añadir `fs-extra` a `package.json` si no está, y otras nuevas dependencias.
-
-## 8. Puntos Pendientes y Próximas Mejoras (Revisado y Re-priorizado)
+## 4. Puntos Pendientes y Próximas Mejoras (Revisado)
 
 **Prioridad Alta:**
-*   **Tokens de IA:**
-    *   Investigar si la API de Llama puede devolver el costo real de tokens por llamada.
-        *   Si es así: Modificar `aiService.js` para capturarlo, `app.js` (ruta POST previsualizador) para pasarlo al frontend, `previsualizador.ejs` (JS) para enviarlo al guardar tarjeta, y `routes/cards.js` para guardarlo en `cards.tokens_cost` y usarlo para actualizar `users.tokens_used`.
-*   **Previsualizador - Carga y Edición:**
-    *   Implementar la carga de la última tarjeta creada por el usuario al acceder directamente a `/admin/previsualizador`.
-    *   Implementar la carga de una tarjeta existente para edición (ej. `/admin/previsualizador?editCardId=:cardId`), incluyendo poblar el prompt y el contenido en los campos/iframe. Esto requerirá una ruta `GET /admin/cards/:id/content` o similar para obtener el HTML/CSS/JS de los archivos.
-*   **Gestión de Tarjetas (`/admin/cards`):**
-    *   Ajustar la columna "Ruta Archivos" y el enlace "Ver" en la tabla de `views/admin/cards.ejs` para construir la URL dinámicamente (usando `currentUser.profile_slug` y `card.slug`).
-    *   Implementar funcionalidad completa de **Editar Tarjeta** (ruta `GET /admin/cards/:id/edit` para un formulario, ruta `PUT /admin/cards/:id` para actualizar datos y archivos).
-    *   Implementar funcionalidad de **Eliminar Tarjeta** (ruta `DELETE /admin/cards/:id`, con confirmación robusta usando SweetAlert2 en el frontend).
+*   **Confirmar Flujo de Creación de Tarjetas con Tokens Reales:** Realizar una prueba completa para asegurar que el `tokens_cost` real de la IA se guarda en `cards.tokens_cost` y que `users.tokens_used` se incrementa correctamente.
+*   **Asegurar Enlaces CSS/JS en HTML Generado:** Verificar que el último `systemPrompt` y la lógica actual de `aiService.js` resulten consistentemente en que el `html_code` incluya los enlaces a `style.css` y `script.js`. Si no, considerar inyección de estos enlaces en el backend (`routes/cards.js`) como fallback.
+*   **Implementar Edición de Tarjetas:**
+    *   Flujo para cargar datos de tarjeta existente en el previsualizador (`GET /admin/cards/content/:id` o similar).
+    *   Lógica para regenerar contenido con IA si el prompt se edita.
+    *   Ruta `PUT /admin/cards/:id` para guardar cambios, actualizar archivos, actualizar `cards.tokens_cost` con el costo de la nueva regeneración, e incrementar `users.tokens_used` por el costo de esa regeneración.
+*   **Previsualizador - Carga de Tarjeta Existente:** Implementar la carga de una tarjeta existente para edición (ej. `/admin/previsualizador?editCardId=:cardId`).
 
 **Prioridad Media:**
-*   **Visualización Pública de Tarjetas:**
-    *   Crear ruta pública (ej. `GET /cards/:profile_slug/:card_slug` o `/:profile_slug/:card_slug`) que sirva el `index.html` de la tarjeta correspondiente.
-*   **(Opcional) Reordenamiento de Ítems de Menú:** Implementar drag & drop.
+*   **Visualización Pública de Tarjetas:** Crear ruta pública (ej. `GET /cards/:profile_slug/:card_slug`) que sirva el `index.html` de la tarjeta.
+*   **Sistema de Cuota de Tokens por Usuario:** Implementar lógica para `tokens_available` y verificar cuota antes de operaciones de IA.
 
 **Prioridad Baja / Mantenimiento:**
-*   **Almacén de Sesiones Persistente:** Reemplazar `MemoryStore`.
-*   **Crear Migraciones para Tablas Restantes:** `media_files` (si se decide usar).
-*   **Integrar `media_files` con Sección Multimedia.**
-*   **Resolver error 404 para `placeholder.jpg`** en previsualizador (si aún persiste o es relevante).
-*   **Seguridad de `SESSION_SECRET` y valores de producción en `docker-compose.yml`.**
-*   **(Opcional) Funcionalidad "Loguearse con WhatsApp" (planificada, pendiente de API externa).**
-*   **(Solucionado) Notificación persistente para completar perfil.** (Implementado mediante script del lado del cliente que genera un div de alerta).
-*   **(Pendiente) Guía para crear primera tarjeta.**
-*   **(Opcional) HTTPS.**
+*   **Almacén de Sesiones Persistente.**
+*   **Guía para crear primera tarjeta.**
 *   Revisar `DeprecationWarning: The \`util.isArray\` API is deprecated`.
+*   Otras mejoras mencionadas anteriormente.
 
-## 9. Problema Histórico con `block('pageScripts').append()` (Solucionado)
+Este avance.md debería estar ahora mucho más detallado y al día.
 
-Durante el desarrollo, se encontraron errores recurrentes de sintaxis EJS (como `SyntaxError: Invalid or unexpected token` o `missing ) after argument list`) al intentar utilizar `block('pageScripts').append()` de `ejs-mate` para incrustar bloques de JavaScript que contenían sus propias comillas, backticks, o múltiples líneas. Aunque se intentaron varias formas de escapar o formatear el string, la solución más estable y robusta fue **externalizar dichos scripts de JavaScript a archivos `.js` separados** (ubicados en `public/js/`). Luego, estos archivos se enlazaron en las plantillas EJS correspondientes usando una forma simple de `append()` que solo incluye la etiqueta script, por ejemplo: `<% block('pageScripts').append('<script src="/js/nombre-del-script.js"></script>') %>`. Este enfoque eliminó los problemas de parseo por parte de EJS.
-
-Este prompt debería proporcionar un contexto completo del estado actual del proyecto TarjetasIA.
+---
+{
+    "id": "6209db7a-207f-4626-b9a4-4ebf60acb0c3",
+    "created": 1747878138,
+    "model": "llama3.1-70b",
+    "object": "chat.completion",
+    "system_fingerprint": null,
+    "choices": [
+        {
+            "finish_reason": "tool_calls",
+            "index": 0,
+            "message": {
+                "content": null,
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "index": 0,
+                        "function": {
+                            "arguments": "{\"html_code\": \"<!DOCTYPE html><html lang=\", \"css_code\": \"body {font-family: Arial, sans-serif;}h1 {color: #00698f;}ul {list-style-type: none;}li {display: inline-block; margin-right: 20px;}\", \"js_code\": \"function openTab(tabName) {var i;var x = document.getElementsByClassName(\"}",
+                            "name": "generate_web_content"
+                        },
+                        "id": "call_8hSgui9k6bOK078fFgB3ctp7",
+                        "type": "function"
+                    }
+                ],
+                "function_call": null
+            }
+        }
+    ],
+    "usage": {
+        "completion_tokens": 95,
+        "prompt_tokens": 348,
+        "total_tokens": 443,
+        "completion_tokens_details": null,
+        "prompt_tokens_details": null
+    }
+}

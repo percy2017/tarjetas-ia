@@ -15,13 +15,133 @@
         </div>
     <% } %>
 
-    <form action="/admin/previsualizador" method="post" class="mt-3">
-        <div class="mb-3"> <!-- Cambiado mb-2 a mb-3 para más espacio -->
-            <label for="prompt" class="form-label">Prompt para la IA:</label>
-            <textarea class="form-control" id="prompt" name="prompt" rows="5" placeholder="Ej: Crea una landing page simple para una tienda de café llamada 'El Grano Feliz'. Incluye un título, un párrafo de bienvenida y una imagen placeholder."><%= locals.loadedPrompt || '' %></textarea>
+    <form id="cardCustomizationForm" class="mt-3">
+        <div id="aiSection" class="d-none"> <!-- Hiding AI section -->
+            <div class="mb-3">
+                <label for="prompt" class="form-label">Prompt para la IA:</label>
+                <textarea class="form-control" id="prompt" name="prompt" rows="5" placeholder="Ej: Crea una landing page simple para una tienda de café llamada 'El Grano Feliz'. Incluye un título, un párrafo de bienvenida y una imagen placeholder."><%= locals.loadedPrompt || '' %></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" id="sendPromptBtn">Enviar Prompt a IA</button>
         </div>
-        <button type="submit" class="btn btn-primary" id="sendPromptBtn">Enviar Prompt a IA</button>
-        <button type="button" class="btn btn-success ms-2" id="saveCardBtn" style="display: none;">Guardar Tarjeta</button>
+
+        <div class="accordion mt-3" id="cardEditorAccordion">
+            <!-- Item 1: General & Meta -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingGeneralMeta">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGeneralMeta" aria-expanded="true" aria-controls="collapseGeneralMeta">
+                        Configuración General y Metaetiquetas
+                    </button>
+                </h2>
+                <div id="collapseGeneralMeta" class="accordion-collapse collapse show" aria-labelledby="headingGeneralMeta" data-bs-parent="#cardEditorAccordion">
+                    <div class="accordion-body">
+                        <div class="mb-3">
+                            <label for="pageTitle" class="form-label">Título de la Página (title)</label>
+                            <input type="text" class="form-control" id="pageTitle" name="pageTitle" value="<%= locals.editingCard && locals.editingCard.data && locals.editingCard.data.pageTitle ? locals.editingCard.data.pageTitle : '' %>">
+                        </div>
+                        <div class="mb-3">
+                            <label for="themeMode" class="form-label">Tema</label>
+                            <select class="form-select" id="themeMode" name="themeMode">
+                                <option value="light" <%= (locals.editingCard && locals.editingCard.data && locals.editingCard.data.themeMode === 'light') ? 'selected' : '' %>>Light</option>
+                                <option value="dark" <%= (locals.editingCard && locals.editingCard.data && locals.editingCard.data.themeMode === 'dark') ? 'selected' : '' %>>Dark</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="metaDescription" class="form-label">Meta Descripción</label>
+                            <textarea class="form-control" id="metaDescription" name="metaDescription" rows="2"><%= locals.editingCard && locals.editingCard.data && locals.editingCard.data.metaDescription ? locals.editingCard.data.metaDescription : '' %></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="ogImageUrl" class="form-label">URL Imagen Open Graph (og:image)</label>
+                            <input type="url" class="form-control" id="ogImageUrl" name="ogImageUrl" placeholder="https://example.com/image.jpg" value="<%= locals.editingCard && locals.editingCard.data && locals.editingCard.data.ogImageUrl ? locals.editingCard.data.ogImageUrl : '' %>">
+                        </div>
+                        <div class="mb-3">
+                            <label for="faviconUrl" class="form-label">URL Favicon</label>
+                            <input type="url" class="form-control" id="faviconUrl" name="faviconUrl" placeholder="/images/favicon.ico" value="<%= locals.editingCard && locals.editingCard.data && locals.editingCard.data.faviconUrl ? locals.editingCard.data.faviconUrl : '' %>">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item 2: Barra de Navegación -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingNavbar">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNavbar" aria-expanded="false" aria-controls="collapseNavbar">
+                        Barra de Navegación
+                    </button>
+                </h2>
+                <div id="collapseNavbar" class="accordion-collapse collapse" aria-labelledby="headingNavbar" data-bs-parent="#cardEditorAccordion">
+                    <div class="accordion-body">
+                        <div class="mb-3">
+                            <label for="navBrandText" class="form-label">Texto/HTML del Logo/Marca</label>
+                            <input type="text" class="form-control" id="navBrandText" name="navBrandText" value="<%= locals.editingCard && locals.editingCard.data && locals.editingCard.data.navBrandText ? locals.editingCard.data.navBrandText : '' %>">
+                        </div>
+                        <div class="mb-3">
+                            <label for="navItemsHtml" class="form-label">Ítems de Navegación (HTML para los li)</label>
+                            <textarea class="form-control" id="navItemsHtml" name="navItemsHtml" rows="4" placeholder=""></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item 3: Contenido Principal -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingMainContent">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMainContent" aria-expanded="false" aria-controls="collapseMainContent">
+                        Contenido Principal (Secciones)
+                    </button>
+                </h2>
+                <div id="collapseMainContent" class="accordion-collapse collapse" aria-labelledby="headingMainContent" data-bs-parent="#cardEditorAccordion">
+                    <div class="accordion-body">
+                        <div class="mb-3">
+                            <label for="mainSectionsHtml" class="form-label">HTML del Contenido Principal</label>
+                            <textarea class="form-control" id="mainSectionsHtml" name="mainSectionsHtml" rows="10"><%= locals.editingCard && locals.editingCard.data && locals.editingCard.data.mainSectionsHtml ? locals.editingCard.data.mainSectionsHtml : '' %></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item 4: Pie de Página -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingFooter">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFooter" aria-expanded="false" aria-controls="collapseFooter">
+                        Pie de Página
+                    </button>
+                </h2>
+                <div id="collapseFooter" class="accordion-collapse collapse" aria-labelledby="headingFooter" data-bs-parent="#cardEditorAccordion">
+                    <div class="accordion-body">
+                        <div class="mb-3">
+                            <label for="footerText" class="form-label">Texto/HTML del Pie de Página</label>
+                            <textarea class="form-control" id="footerText" name="footerText" rows="2"><%= locals.editingCard && locals.editingCard.data && locals.editingCard.data.footerText ? locals.editingCard.data.footerText : '' %></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item 5: Estilos y Scripts Personalizados -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingCustomCode">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCustomCode" aria-expanded="false" aria-controls="collapseCustomCode">
+                        CSS y JavaScript
+                    </button>
+                </h2>
+                <div id="collapseCustomCode" class="accordion-collapse collapse" aria-labelledby="headingCustomCode" data-bs-parent="#cardEditorAccordion">
+                    <div class="accordion-body">
+                        <div class="mb-3">
+                            <label for="customStyles" class="form-label">CSS Personalizado (sin style tags)</label>
+                            <textarea class="form-control" id="customStyles" name="customStyles" rows="5"><%= locals.editingCard && locals.editingCard.data && locals.editingCard.data.customStyles ? locals.editingCard.data.customStyles : '' %></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="customScripts" class="form-label">JavaScript Personalizado (sin script tags)</label>
+                            <textarea class="form-control" id="customScripts" name="customScripts" rows="5"><%= locals.editingCard && locals.editingCard.data && locals.editingCard.data.customScripts ? locals.editingCard.data.customScripts : '' %></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- Fin del Acordeón -->
+
+        <div class="mt-3">
+            <button type="button" class="btn btn-info" id="previewManualCardBtn">Previsualizar Cambios en Iframe</button>
+            <button type="button" class="btn btn-success ms-2" id="saveCardBtn" style="display: none;">Guardar Tarjeta</button> <!-- Initially hidden, JS will show it -->
+        </div>
     </form>
 
     <% if (typeof apiResponseData !== 'undefined' && apiResponseData) { %>

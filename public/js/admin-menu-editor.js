@@ -210,4 +210,72 @@ $(document).ready(function() {
     });
 
     console.log("Page scripts for menu-editor fully loaded with all handlers.");
+
+    // Inicializar SortableJS para la lista de ítems del menú
+    const menuList = document.getElementById('menuItemsList');
+    if (menuList) {
+        new Sortable(menuList, {
+            animation: 150, // ms, animation speed moving items when sorting, `0` — without animation
+            ghostClass: 'bg-info', // Class name for the drop placeholder
+            onEnd: function (evt) {
+                // evt.oldIndex; // element's old index within parent
+                // evt.newIndex; // element's new index within parent
+                // evt.item; // dragged HTMLElement
+                
+                const items = [];
+                menuList.querySelectorAll('li.list-group-item').forEach((itemEl, index) => {
+                    items.push({
+                        id: itemEl.getAttribute('data-id'),
+                        display_order: index 
+                    });
+                });
+
+                // Enviar la nueva ordenación al backend
+                sendReorderRequest(items);
+            }
+        });
+    }
+
+    function sendReorderRequest(orderedItems) {
+        fetch('/admin/menu-editor/items/reorder', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ items: orderedItems })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw err; });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Orden Actualizado!',
+                    text: data.message || 'El orden de los ítems del menú ha sido actualizado.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                // No es necesario recargar la página, el orden visual ya cambió.
+                // Pero si el texto "(Orden: X)" debe actualizarse, se necesitaría recargar o actualizarlo manualmente.
+                // Por ahora, lo dejamos así para simplicidad. Si se recarga, se pierde el feedback inmediato.
+                // location.reload(); 
+            } else {
+                Swal.fire('Error', data.message || 'No se pudo actualizar el orden.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error al reordenar ítems:', error);
+            let errorMessage = 'Ocurrió un error al contactar al servidor para reordenar.';
+            if (error && error.message) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            Swal.fire('Error de Conexión', errorMessage, 'error');
+        });
+    }
 });

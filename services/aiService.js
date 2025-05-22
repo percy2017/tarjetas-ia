@@ -1,6 +1,27 @@
 import axios from 'axios';
 import db from '../db.cjs'; // Importar la instancia de Knex
 
+// Definimos el system_prompt exitoso directamente en el código.
+const SUCCESSFUL_SYSTEM_PROMPT = `Eres un asistente de IA especializado en desarrollo web frontend. Tu única tarea es generar un objeto JSON que contenga el código HTML, CSS y JavaScript para una tarjeta de presentación digital, basado en la descripción proporcionada por el usuario.
+
+REGLAS CRÍTICAS PARA TU RESPUESTA:
+1.  Tu respuesta DEBE SER ÚNICA Y EXCLUSIVAMENTE un objeto JSON válido. NO incluyas ningún texto, explicación, saludo, despedida, markdown, ni ningún carácter antes del '{' inicial o después del '}' final del objeto JSON.
+2.  El objeto JSON DEBE tener exactamente tres claves principales: "html_code", "css_code", y "js_code".
+3.  Los valores para estas tres claves DEBEN ser strings que contengan el código correspondiente.
+4.  El string de "html_code" DEBE ser un documento HTML5 completo y bien formado. En la sección <head> del HTML, DEBES incluir textualmente la etiqueta: <link rel="stylesheet" href="style.css">. Antes de la etiqueta de cierre </body>, DEBES incluir textualmente la etiqueta: <script src="script.js"></script>.
+5.  El string de "css_code" DEBE contener el código CSS necesario para estilizar el HTML proporcionado.
+6.  El string de "js_code" DEBE contener el código JavaScript. Si no se requiere JavaScript específico para la funcionalidad descrita, puede ser un string vacío o un simple console.log.
+7.  Todas las claves del objeto JSON y todos los valores de tipo string dentro del JSON (incluyendo el código HTML, CSS y JS) DEBEN estar encerrados estrictamente en comillas dobles ("). NO uses comillas simples.
+
+EJEMPLO DE LA ESTRUCTURA JSON EXACTA ESPERADA:
+{
+  "html_code": "<!DOCTYPE html><html lang=\\"es\\"><head><meta charset=\\"UTF-8\\"><meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\"><title>Mi Tarjeta</title><link rel=\\"stylesheet\\" href=\\"style.css\\"></head><body><div class=\\"tarjeta\\"><h1 class=\\"nombre\\">Nombre Apellido</h1><p class=\\"profesion\\">Profesión</p></div><script src=\\"script.js\\"></script></body></html>",
+  "css_code": "body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f0f0f0; } .tarjeta { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; } .nombre { color: #333; } .profesion { color: #777; }",
+  "js_code": "console.log('Tarjeta de presentación cargada.');"
+}
+
+Ahora, procesa la siguiente descripción del usuario y genera el objeto JSON correspondiente siguiendo todas estas reglas al pie de la letra.`;
+
 async function getLlamaApiConfig() {
   const configsArray = await db('configs').where('section_key', 'ia_model_config').first();
   if (!configsArray || !configsArray.fields_config_json) {
@@ -10,40 +31,48 @@ async function getLlamaApiConfig() {
   const fields = JSON.parse(configsArray.fields_config_json);
   let apiUrl = '';
   let apiKey = '';
-  let systemPrompt = '';
+  // Ya no necesitamos obtener el systemPrompt de la BD para esta función específica.
+  // let systemPrompt = ''; 
 
   fields.forEach(field => {
     if (field.key === 'IA_API_URL') apiUrl = field.value;
     if (field.key === 'IA_API_KEY') apiKey = field.value;
-    if (field.key === 'IA_SYSTEM_PROMPT') systemPrompt = field.value;
+    // if (field.key === 'IA_SYSTEM_PROMPT') systemPrompt = field.value;
   });
 
-  if (!apiUrl || !apiKey || !systemPrompt) {
-    throw new Error('URL, API Key o System Prompt de la IA no configuradas en la BD para ia_model_config.');
+  if (!apiUrl || !apiKey) { // Solo verificamos apiUrl y apiKey
+    throw new Error('URL o API Key de la IA no configuradas en la BD para ia_model_config.');
   }
-  return { apiUrl, apiKey, systemPrompt };
+  return { apiUrl, apiKey }; // Devolvemos solo apiUrl y apiKey
 }
 
 async function generateLlamaCompletion(userPrompt) {
-  const { apiUrl, apiKey, systemPrompt } = await getLlamaApiConfig();
+  const { apiUrl, apiKey } = await getLlamaApiConfig();
 
   const payload = {
-    model: "llama3-8b", // Asumiendo este modelo por ahora
+    model: "llama3.1-70b", 
     messages: [
       {
         role: "system",
-        content: systemPrompt
+        content: SUCCESSFUL_SYSTEM_PROMPT // Usar el system_prompt definido arriba
       },
       {
         role: "user",
         content: userPrompt
       }
     ],
-    stream: false
+    stream: false,
+    // Eliminamos 'tools' y 'tool_choice'
+    max_tokens: 3500,      // Ajustado según la prueba exitosa de Postman
+    temperature: 0.2       // Ajustado según la prueba exitosa de Postman
+    // Si la API soporta response_format: { type: "json_object" }, se añadiría aquí.
+    // "response_format": { "type": "json_object" } 
   };
 
   try {
-    console.log('Llamando a Llama API (desde aiService) URL:', `${apiUrl}/chat/completions`);
+    console.log('Llamando a Llama API (aiService) con Solicitud Normal. URL:', `${apiUrl}/chat/completions`);
+    console.log('Payload enviado a Llama API (Solicitud Normal):', JSON.stringify(payload, null, 2));
+    
     const llamaResponse = await axios.post(
       `${apiUrl}/chat/completions`,
       payload,
@@ -55,76 +84,47 @@ async function generateLlamaCompletion(userPrompt) {
       }
     );
 
-    // Procesar la respuesta para extraer el código
-    if (llamaResponse.data && llamaResponse.data.choices && llamaResponse.data.choices[0] && llamaResponse.data.choices[0].message && llamaResponse.data.choices[0].message.content) {
-      const contentString = llamaResponse.data.choices[0].message.content;
-      let parsedContent;
+    console.log('Respuesta completa de Llama API (Solicitud Normal):', JSON.stringify(llamaResponse.data, null, 2));
 
+    if (llamaResponse.data && llamaResponse.data.choices && llamaResponse.data.choices[0].message && llamaResponse.data.choices[0].message.content) {
+      const messageContent = llamaResponse.data.choices[0].message.content;
       try {
-        // Intento 1: Parsear directamente como JSON (esperado según el system prompt)
-        parsedContent = JSON.parse(contentString);
+        // Intentamos parsear directamente el contenido del mensaje.
+        const parsedContent = JSON.parse(messageContent);
+        const tokensConsumed = (llamaResponse.data.usage && llamaResponse.data.usage.total_tokens) 
+                               ? llamaResponse.data.usage.total_tokens 
+                               : 0; // Fallback a 0
+
+        // Validar que el JSON parseado tenga la estructura esperada
+        if (typeof parsedContent.html_code === 'string' &&
+            typeof parsedContent.css_code === 'string' &&
+            typeof parsedContent.js_code === 'string') {
+          return {
+            html_code: parsedContent.html_code,
+            css_code: parsedContent.css_code,
+            js_code: parsedContent.js_code,
+            tokens_cost: tokensConsumed
+          };
+        } else {
+          console.error("El JSON parseado de la IA no tiene la estructura esperada (html_code, css_code, js_code). Contenido:", parsedContent);
+          throw new Error('El JSON devuelto por la IA no contiene las claves esperadas (html_code, css_code, js_code).');
+        }
       } catch (e) {
-        // Intento 2: Si falla el JSON.parse, intentar con regex (para el caso donde la IA devuelve un string con formato de objeto JS y backticks o comillas)
-        console.warn("JSON.parse falló para la respuesta directa de la IA, intentando regex para extraer contenido. Error de parseo:", e.message);
-        console.warn("Content string que falló JSON.parse:", contentString);
-
-        const extractWithRegex = (key, str) => {
-          // Prioriza backticks si existen para un campo.
-          let regex = new RegExp(`"${key}"\\s*:\\s*\`([\\s\\S]*?)\``);
-          let match = str.match(regex);
-          if (match && match[1]) return match[1].trim();
-
-          // Fallback a comillas dobles si no se encontraron backticks para esta clave
-          // Esta regex captura contenido entre comillas dobles, manejando comillas escapadas dentro.
-          regex = new RegExp(`"${key}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"`);
-          match = str.match(regex);
-          if (match && match[1]) {
-            // La cadena capturada (match[1]) ya está decodificada de escapes como \\ y \".
-            // Para decodificar \n, \t, etc., necesitamos parsearla como una cadena JSON.
-            try {
-              return JSON.parse(`"${match[1].replace(/"/g, '\\"')}"`); // Re-escapar comillas internas para el parse
-            } catch (jsonParseError) {
-              console.error(`Error al parsear valor de regex para ${key}:`, jsonParseError, "Valor original:", match[1]);
-              return match[1]; // Devolver el valor tal cual si el parseo de la subcadena falla
-            }
-          }
-          return ''; // Devolver cadena vacía si no hay coincidencia
-        };
-        
-        parsedContent = {
-          html_code: extractWithRegex("html_code", contentString),
-          css_code: extractWithRegex("css_code", contentString),
-          js_code: extractWithRegex("js_code", contentString)
-        };
-      }
-
-      // Verificar si se extrajo al menos el html_code
-      if (parsedContent && (parsedContent.html_code || parsedContent.html_code === '')) { // Permitir html_code vacío
-        return {
-          html_code: parsedContent.html_code,
-          css_code: parsedContent.css_code || '',
-          js_code: parsedContent.js_code || ''
-          // No hay información de tokens_cost aquí por ahora
-        };
-      } else {
-        console.error("No se pudo extraer contenido válido de la respuesta de la IA. Respuesta original:", contentString, "Contenido parseado/extraído:", parsedContent);
-        throw new Error('La respuesta de la IA no pudo ser procesada para extraer el contenido HTML.');
+        console.error("Error al parsear el contenido del mensaje de la IA:", e.message);
+        console.error("Contenido recibido (string):", messageContent);
+        throw new Error('La IA devolvió contenido en un formato JSON inválido o no esperado.');
       }
     } else {
-      console.error("Unexpected IA response structure in aiService:", llamaResponse.data);
-      throw new Error('Respuesta inesperada del API de IA, no se encontró el contenido del mensaje.');
+      console.error("Respuesta inesperada de la IA, no se encontró message.content o estructura esperada:", JSON.stringify(llamaResponse.data, null, 2));
+      throw new Error('Respuesta inesperada del API de IA, la estructura de respuesta es incorrecta.');
     }
   } catch (error) {
-    console.error('Error en aiService llamando a Llama API:', error.response ? error.response.data : error.message);
-    // Re-lanzar el error para que la ruta lo maneje o devolver una estructura de error más específica
+    console.error('Error en aiService llamando a Llama API:', error.response ? JSON.stringify(error.response.data, null, 2) : error.message);
     if (error.response) {
-        // El request se hizo y el servidor respondió con un status code que cae fuera del rango de 2xx
         throw new Error(`Error de API Llama: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
     } else if (error.request) {
-        // El request se hizo pero no se recibió respuesta
         throw new Error('Error de API Llama: No se recibió respuesta del servidor.');
     } else {
-        // Algo pasó al configurar el request que disparó un Error
         throw new Error(`Error de API Llama: ${error.message}`);
     }
   }
